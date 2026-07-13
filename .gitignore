@@ -1,6 +1,7 @@
 Thumbs.db
 .claude/
 .env
+node_modules/
 BI_CLIENTE_360/
 COMPRAS/
 MODELOv2.xlsb
