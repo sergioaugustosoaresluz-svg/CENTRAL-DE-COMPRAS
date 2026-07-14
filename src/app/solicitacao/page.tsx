@@ -9,6 +9,7 @@ import {
   inputClass,
   buttonClass,
   secondaryButtonClass,
+  dangerButtonClass,
   cardClass,
   UNIDADES,
   gerarCodigo,
@@ -17,10 +18,10 @@ import {
 type Tab = "solicitante" | "comprador";
 
 export default function SolicitacaoPage() {
-  const { loading, isSolicitante, isComprador, solicitanteId, compradorId } = useAuth();
+  const { loading, isSolicitante, isComprador, isAdmin, solicitanteId, compradorId } = useAuth();
   const abas: Tab[] = [
     ...(isSolicitante ? (["solicitante"] as const) : []),
-    ...(isComprador ? (["comprador"] as const) : []),
+    ...(isComprador || isAdmin ? (["comprador"] as const) : []),
   ];
   const [tab, setTab] = useState<Tab | null>(null);
   const abaAtiva = tab && abas.includes(tab) ? tab : abas[0] ?? null;
@@ -55,9 +56,7 @@ export default function SolicitacaoPage() {
           {abaAtiva === "solicitante" && solicitanteId && (
             <VisaoSolicitante solicitanteId={solicitanteId} />
           )}
-          {abaAtiva === "comprador" && compradorId && (
-            <VisaoComprador compradorId={compradorId} />
-          )}
+          {abaAtiva === "comprador" && <VisaoComprador compradorId={compradorId} />}
         </>
       )}
     </main>
@@ -270,7 +269,8 @@ interface SolicitacaoPendente {
   solicitantes: { nome_completo: string } | null;
 }
 
-function VisaoComprador({ compradorId }: { compradorId: string }) {
+function VisaoComprador({ compradorId }: { compradorId: string | null }) {
+  const { isAdmin } = useAuth();
   const [pendentes, setPendentes] = useState<SolicitacaoPendente[]>([]);
   const [selecionado, setSelecionado] = useState<SolicitacaoPendente | null>(null);
   const [form, setForm] = useState({
@@ -312,6 +312,10 @@ function VisaoComprador({ compradorId }: { compradorId: string }) {
 
   async function aprovarItem() {
     if (!selecionado) return;
+    if (!compradorId) {
+      setMensagem("Apenas compradores podem aprovar itens.");
+      return;
+    }
     setSalvando(true);
     try {
       const { error: erroItem } = await supabase
@@ -346,6 +350,17 @@ function VisaoComprador({ compradorId }: { compradorId: string }) {
     } finally {
       setSalvando(false);
     }
+  }
+
+  async function excluir(p: SolicitacaoPendente) {
+    if (!window.confirm(`Tem certeza que deseja excluir a solicitação "${p.codigo}"?`)) return;
+    const { error } = await supabase.from("solicitacoes").delete().eq("id", p.id);
+    if (error) {
+      setMensagem("Erro ao excluir: " + error.message);
+      return;
+    }
+    if (selecionado?.id === p.id) setSelecionado(null);
+    carregarPendentes();
   }
 
   async function solicitarMaisDetalhes() {
@@ -384,6 +399,7 @@ function VisaoComprador({ compradorId }: { compradorId: string }) {
                 <th>Quantidade</th>
                 <th>Data</th>
                 <th></th>
+                {isAdmin && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -398,6 +414,13 @@ function VisaoComprador({ compradorId }: { compradorId: string }) {
                       Especificar
                     </button>
                   </td>
+                  {isAdmin && (
+                    <td>
+                      <button onClick={() => excluir(p)} className={dangerButtonClass}>
+                        Excluir
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

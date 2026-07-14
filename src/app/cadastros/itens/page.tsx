@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Item } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass, UNIDADES } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, UNIDADES } from "@/components/ui";
 
 interface ErroSupabase {
   code?: string;
@@ -35,6 +36,7 @@ function ItemStatusBadge({ status }: { status: Item["status"] }) {
 }
 
 export default function ItensPage() {
+  const { isAdmin } = useAuth();
   const [lista, setLista] = useState<Item[]>([]);
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
@@ -83,6 +85,17 @@ export default function ItensPage() {
       return "Você não tem permissão para esta ação.";
     }
     return e.message ?? "Erro desconhecido.";
+  }
+
+  async function excluir(e: React.MouseEvent, i: Item) {
+    e.stopPropagation();
+    if (!window.confirm(`Tem certeza que deseja excluir "${i.item}"?`)) return;
+    const { error } = await supabase.from("itens").delete().eq("id", i.id);
+    if (error) {
+      setMensagem(mensagemDeErro(error));
+      return;
+    }
+    carregar();
   }
 
   async function salvar() {
@@ -147,6 +160,7 @@ export default function ItensPage() {
               <th>Item</th>
               <th>Marca</th>
               <th>Status</th>
+              {isAdmin && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -162,6 +176,13 @@ export default function ItensPage() {
                 <td>
                   <ItemStatusBadge status={i.status} />
                 </td>
+                {isAdmin && (
+                  <td>
+                    <button onClick={(e) => excluir(e, i)} className={dangerButtonClass}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

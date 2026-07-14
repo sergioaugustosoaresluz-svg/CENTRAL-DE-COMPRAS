@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass } from "@/components/ui";
 
 interface ErroSupabase {
   code?: string;
@@ -20,6 +21,7 @@ const FORM_VAZIO = {
 };
 
 export default function FornecedoresPage() {
+  const { isAdmin } = useAuth();
   const [lista, setLista] = useState<Fornecedor[]>([]);
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
@@ -71,6 +73,17 @@ export default function FornecedoresPage() {
       return "Já existe um fornecedor com este código.";
     }
     return e.message ?? "Erro desconhecido.";
+  }
+
+  async function excluir(e: React.MouseEvent, f: Fornecedor) {
+    e.stopPropagation();
+    if (!window.confirm(`Tem certeza que deseja excluir "${f.fornecedor}"?`)) return;
+    const { error } = await supabase.from("fornecedores").delete().eq("id", f.id);
+    if (error) {
+      setMensagem(mensagemDeErro(error));
+      return;
+    }
+    carregar();
   }
 
   async function salvar() {
@@ -130,6 +143,7 @@ export default function FornecedoresPage() {
               <th>Fornecedor</th>
               <th>Contato</th>
               <th>UF</th>
+              {isAdmin && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -143,6 +157,13 @@ export default function FornecedoresPage() {
                 <td>{f.fornecedor}</td>
                 <td>{f.contato ?? f.email ?? f.telefone ?? "-"}</td>
                 <td>{f.uf ?? "-"}</td>
+                {isAdmin && (
+                  <td>
+                    <button onClick={(e) => excluir(e, f)} className={dangerButtonClass}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -7,6 +7,9 @@ export const buttonClass =
 export const secondaryButtonClass =
   "rounded-md border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium disabled:opacity-50";
 
+export const dangerButtonClass =
+  "rounded-md border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 text-sm font-medium disabled:opacity-50";
+
 export const cardClass =
   "space-y-4 border rounded-lg p-6 border-zinc-200 dark:border-zinc-800";
 
