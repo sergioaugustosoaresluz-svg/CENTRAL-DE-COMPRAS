@@ -41,7 +41,12 @@ export default function ParametrizacaoPage() {
       setEditando(null);
       carregar();
     } catch (e) {
-      setMensagem("Erro ao salvar: " + (e as Error).message);
+      const erro = e as { code?: string; message?: string };
+      if (erro.code === "42501") {
+        setMensagem("Você não tem permissão para esta ação.");
+      } else {
+        setMensagem("Erro ao salvar: " + (erro.message ?? "erro desconhecido"));
+      }
     } finally {
       setSalvando(false);
     }

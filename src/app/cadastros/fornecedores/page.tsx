@@ -64,6 +64,9 @@ export default function FornecedoresPage() {
   }
 
   function mensagemDeErro(e: ErroSupabase): string {
+    if (e.code === "42501") {
+      return "Você não tem permissão para esta ação.";
+    }
     if (e.code === "23505") {
       return "Já existe um fornecedor com este código.";
     }

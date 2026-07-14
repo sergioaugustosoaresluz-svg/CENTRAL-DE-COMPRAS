@@ -79,6 +79,9 @@ export default function ItensPage() {
   }
 
   function mensagemDeErro(e: ErroSupabase): string {
+    if (e.code === "42501") {
+      return "Você não tem permissão para esta ação.";
+    }
     return e.message ?? "Erro desconhecido.";
   }
 

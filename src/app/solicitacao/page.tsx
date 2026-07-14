@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import type { Pessoa, Item, SolicitacaoStatus } from "@/lib/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Item, SolicitacaoStatus } from "@/lib/supabase/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   inputClass,
@@ -16,30 +17,49 @@ import {
 type Tab = "solicitante" | "comprador";
 
 export default function SolicitacaoPage() {
-  const [tab, setTab] = useState<Tab>("solicitante");
+  const { loading, isSolicitante, isComprador, solicitanteId, compradorId } = useAuth();
+  const abas: Tab[] = [
+    ...(isSolicitante ? (["solicitante"] as const) : []),
+    ...(isComprador ? (["comprador"] as const) : []),
+  ];
+  const [tab, setTab] = useState<Tab | null>(null);
+  const abaAtiva = tab && abas.includes(tab) ? tab : abas[0] ?? null;
+
+  if (loading) return null;
 
   return (
     <main className="max-w-4xl mx-auto p-8">
       <h1 className="text-2xl font-semibold mb-6">Solicitação</h1>
 
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab("solicitante")}
-          className={
-            tab === "solicitante" ? buttonClass : secondaryButtonClass
-          }
-        >
-          Solicitante
-        </button>
-        <button
-          onClick={() => setTab("comprador")}
-          className={tab === "comprador" ? buttonClass : secondaryButtonClass}
-        >
-          Comprador
-        </button>
-      </div>
+      {abas.length === 0 ? (
+        <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
+      ) : (
+        <>
+          {abas.length > 1 && (
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setTab("solicitante")}
+                className={abaAtiva === "solicitante" ? buttonClass : secondaryButtonClass}
+              >
+                Solicitante
+              </button>
+              <button
+                onClick={() => setTab("comprador")}
+                className={abaAtiva === "comprador" ? buttonClass : secondaryButtonClass}
+              >
+                Comprador
+              </button>
+            </div>
+          )}
 
-      {tab === "solicitante" ? <VisaoSolicitante /> : <VisaoComprador />}
+          {abaAtiva === "solicitante" && solicitanteId && (
+            <VisaoSolicitante solicitanteId={solicitanteId} />
+          )}
+          {abaAtiva === "comprador" && compradorId && (
+            <VisaoComprador compradorId={compradorId} />
+          )}
+        </>
+      )}
     </main>
   );
 }
@@ -53,9 +73,7 @@ interface SolicitacaoComItem {
   itens: { item: string } | null;
 }
 
-function VisaoSolicitante() {
-  const [solicitantes, setSolicitantes] = useState<Pessoa[]>([]);
-  const [solicitanteId, setSolicitanteId] = useState("");
+function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [itemId, setItemId] = useState("");
   const [itemNovo, setItemNovo] = useState(false);
@@ -70,36 +88,25 @@ function VisaoSolicitante() {
 
   useEffect(() => {
     supabase
-      .from("solicitantes")
-      .select("*")
-      .order("nome_completo")
-      .then(({ data }) => setSolicitantes(data ?? []));
-    supabase
       .from("itens")
       .select("*")
       .order("item")
       .then(({ data }) => setItens(data ?? []));
+    carregarMinhasSolicitacoes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!solicitanteId) {
-      setMinhasSolicitacoes([]);
-      return;
-    }
-    carregarMinhasSolicitacoes(solicitanteId);
-  }, [solicitanteId]);
-
-  async function carregarMinhasSolicitacoes(id: string) {
+  async function carregarMinhasSolicitacoes() {
     const { data } = await supabase
       .from("solicitacoes")
       .select("id, codigo, quantidade, status, created_at, itens(item)")
-      .eq("solicitante_id", id)
+      .eq("solicitante_id", solicitanteId)
       .order("created_at", { ascending: false });
     setMinhasSolicitacoes((data as unknown as SolicitacaoComItem[]) ?? []);
   }
 
   async function enviarSolicitacao() {
-    if (!solicitanteId || !quantidade) return;
+    if (!quantidade) return;
     if (!itemNovo && !itemId) return;
     if (itemNovo && !descricaoNovoItem.trim()) return;
 
@@ -141,7 +148,7 @@ function VisaoSolicitante() {
       setDescricaoNovoItem("");
       setQuantidade("");
       setObservacoes("");
-      carregarMinhasSolicitacoes(solicitanteId);
+      carregarMinhasSolicitacoes();
     } catch (e) {
       setMensagem("Erro ao criar solicitação: " + (e as Error).message);
     } finally {
@@ -153,22 +160,6 @@ function VisaoSolicitante() {
     <div className="space-y-8">
       <section className={cardClass}>
         <h2 className="font-medium">Nova Solicitação</h2>
-
-        <label className="block text-sm space-y-1">
-          <span>Solicitante</span>
-          <select
-            value={solicitanteId}
-            onChange={(e) => setSolicitanteId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">Selecione...</option>
-            {solicitantes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nome_completo}
-              </option>
-            ))}
-          </select>
-        </label>
 
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -237,9 +228,7 @@ function VisaoSolicitante() {
       <section>
         <h2 className="font-medium mb-3">Minhas solicitações</h2>
         {minhasSolicitacoes.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            {solicitanteId ? "Nenhuma solicitação ainda." : "Selecione um solicitante para ver a lista."}
-          </p>
+          <p className="text-sm text-zinc-500">Nenhuma solicitação ainda.</p>
         ) : (
           <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
             <thead>
@@ -281,9 +270,7 @@ interface SolicitacaoPendente {
   solicitantes: { nome_completo: string } | null;
 }
 
-function VisaoComprador() {
-  const [compradores, setCompradores] = useState<Pessoa[]>([]);
-  const [compradorId, setCompradorId] = useState("");
+function VisaoComprador({ compradorId }: { compradorId: string }) {
   const [pendentes, setPendentes] = useState<SolicitacaoPendente[]>([]);
   const [selecionado, setSelecionado] = useState<SolicitacaoPendente | null>(null);
   const [form, setForm] = useState({
@@ -298,11 +285,6 @@ function VisaoComprador() {
   const [mensagem, setMensagem] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("compradores")
-      .select("*")
-      .order("nome_completo")
-      .then(({ data }) => setCompradores(data ?? []));
     carregarPendentes();
   }, []);
 
@@ -329,7 +311,7 @@ function VisaoComprador() {
   }
 
   async function aprovarItem() {
-    if (!selecionado || !compradorId) return;
+    if (!selecionado) return;
     setSalvando(true);
     try {
       const { error: erroItem } = await supabase
@@ -389,22 +371,6 @@ function VisaoComprador() {
 
   return (
     <div className="space-y-8">
-      <label className="block text-sm space-y-1 max-w-sm">
-        <span>Você é (comprador)</span>
-        <select
-          value={compradorId}
-          onChange={(e) => setCompradorId(e.target.value)}
-          className={inputClass}
-        >
-          <option value="">Selecione...</option>
-          {compradores.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome_completo}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <section>
         <h2 className="font-medium mb-3">Especificação de Itens Pendentes</h2>
         {pendentes.length === 0 ? (
@@ -508,11 +474,7 @@ function VisaoComprador() {
           </label>
 
           <div className="flex gap-2">
-            <button
-              onClick={aprovarItem}
-              disabled={salvando || !compradorId}
-              className={buttonClass}
-            >
+            <button onClick={aprovarItem} disabled={salvando} className={buttonClass}>
               Aprovar item
             </button>
             <button

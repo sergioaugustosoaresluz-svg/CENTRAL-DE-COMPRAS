@@ -71,6 +71,9 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
   }
 
   function mensagemDeErro(e: ErroSupabase): string {
+    if (e.code === "42501") {
+      return "Você não tem permissão para esta ação.";
+    }
     if (e.code === "23505") {
       if (e.message?.includes("codigo")) return "Já existe um cadastro com este código.";
       if (e.message?.includes("email")) return "Já existe um cadastro com este e-mail.";

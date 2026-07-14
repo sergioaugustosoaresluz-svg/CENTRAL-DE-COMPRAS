@@ -2,34 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import type { Pessoa, Fornecedor, Cotacao, CotacaoMelhorOpcao } from "@/lib/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Fornecedor, Cotacao, CotacaoMelhorOpcao } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
 
 type Tab = "comprador" | "aprovador";
 
 export default function CotacaoPage() {
-  const [tab, setTab] = useState<Tab>("comprador");
+  const { loading, isComprador, isAprovador, aprovadorId } = useAuth();
+  const abas: Tab[] = [
+    ...(isComprador ? (["comprador"] as const) : []),
+    ...(isAprovador ? (["aprovador"] as const) : []),
+  ];
+  const [tab, setTab] = useState<Tab | null>(null);
+  const abaAtiva = tab && abas.includes(tab) ? tab : abas[0] ?? null;
+
+  if (loading) return null;
 
   return (
     <main className="max-w-4xl mx-auto p-8">
       <h1 className="text-2xl font-semibold mb-6">Cotação</h1>
 
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab("comprador")}
-          className={tab === "comprador" ? buttonClass : secondaryButtonClass}
-        >
-          Comprador
-        </button>
-        <button
-          onClick={() => setTab("aprovador")}
-          className={tab === "aprovador" ? buttonClass : secondaryButtonClass}
-        >
-          Aprovador
-        </button>
-      </div>
+      {abas.length === 0 ? (
+        <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
+      ) : (
+        <>
+          {abas.length > 1 && (
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setTab("comprador")}
+                className={abaAtiva === "comprador" ? buttonClass : secondaryButtonClass}
+              >
+                Comprador
+              </button>
+              <button
+                onClick={() => setTab("aprovador")}
+                className={abaAtiva === "aprovador" ? buttonClass : secondaryButtonClass}
+              >
+                Aprovador
+              </button>
+            </div>
+          )}
 
-      {tab === "comprador" ? <VisaoComprador /> : <VisaoAprovador />}
+          {abaAtiva === "comprador" && <VisaoComprador />}
+          {abaAtiva === "aprovador" && aprovadorId && <VisaoAprovador aprovadorId={aprovadorId} />}
+        </>
+      )}
     </main>
   );
 }
@@ -45,8 +63,6 @@ interface SolicitacaoResumo {
 }
 
 function VisaoComprador() {
-  const [compradores, setCompradores] = useState<Pessoa[]>([]);
-  const [compradorId, setCompradorId] = useState("");
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [lista, setLista] = useState<SolicitacaoResumo[]>([]);
   const [contagens, setContagens] = useState<Record<string, number>>({});
@@ -66,16 +82,12 @@ function VisaoComprador() {
 
   useEffect(() => {
     supabase
-      .from("compradores")
-      .select("*")
-      .order("nome_completo")
-      .then(({ data }) => setCompradores(data ?? []));
-    supabase
       .from("fornecedores")
       .select("*")
       .order("fornecedor")
       .then(({ data }) => setFornecedores(data ?? []));
     carregarLista();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function carregarLista() {
@@ -171,24 +183,12 @@ function VisaoComprador() {
 
   return (
     <div className="space-y-8">
-      <label className="block text-sm space-y-1 max-w-sm">
-        <span>Você é (comprador)</span>
-        <select value={compradorId} onChange={(e) => setCompradorId(e.target.value)} className={inputClass}>
-          <option value="">Selecione...</option>
-          {compradores.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome_completo}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <section>
         <h2 className="font-medium mb-3">Registrar Cotações</h2>
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando cotação.</p>
         ) : (
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
             <thead>
               <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
                 <th className="py-2">Código</th>
@@ -330,9 +330,7 @@ interface SolicitacaoAprovacao {
   solicitantes: { nome_completo: string } | null;
 }
 
-function VisaoAprovador() {
-  const [aprovadores, setAprovadores] = useState<Pessoa[]>([]);
-  const [aprovadorId, setAprovadorId] = useState("");
+function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [lista, setLista] = useState<SolicitacaoAprovacao[]>([]);
   const [melhores, setMelhores] = useState<Record<string, CotacaoMelhorOpcao>>({});
@@ -344,15 +342,11 @@ function VisaoAprovador() {
 
   useEffect(() => {
     supabase
-      .from("aprovadores")
-      .select("*")
-      .order("nome_completo")
-      .then(({ data }) => setAprovadores(data ?? []));
-    supabase
       .from("fornecedores")
       .select("*")
       .then(({ data }) => setFornecedores(data ?? []));
     carregarLista();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function nomeFornecedor(id: string) {
@@ -394,7 +388,7 @@ function VisaoAprovador() {
   }
 
   async function aprovar() {
-    if (!selecionada || !aprovadorId || !vencedoraId) return;
+    if (!selecionada || !vencedoraId) return;
     const melhor = melhores[selecionada.id];
     if (!melhor) return;
 
@@ -457,24 +451,12 @@ function VisaoAprovador() {
 
   return (
     <div className="space-y-8">
-      <label className="block text-sm space-y-1 max-w-sm">
-        <span>Você é (aprovador)</span>
-        <select value={aprovadorId} onChange={(e) => setAprovadorId(e.target.value)} className={inputClass}>
-          <option value="">Selecione...</option>
-          {aprovadores.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nome_completo}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <section>
         <h2 className="font-medium mb-3">Cotações Aguardando Aprovação</h2>
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando aprovação.</p>
         ) : (
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
             <thead>
               <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
                 <th className="py-2">Código</th>
@@ -518,7 +500,7 @@ function VisaoAprovador() {
             {selecionada.codigo} — {selecionada.itens?.item}
           </h2>
 
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
             <thead>
               <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
                 <th className="py-2">Fornecedor</th>
@@ -550,7 +532,7 @@ function VisaoAprovador() {
           </table>
 
           <div className="flex gap-2">
-            <button onClick={aprovar} disabled={processando || !aprovadorId} className={buttonClass}>
+            <button onClick={aprovar} disabled={processando} className={buttonClass}>
               Aprovar
             </button>
             <button onClick={rejeitar} disabled={processando} className={secondaryButtonClass}>
