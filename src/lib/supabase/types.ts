@@ -41,6 +41,7 @@ export interface Fornecedor {
 export interface Item {
   id: string;
   codigo: string | null;
+  codigo_sugerido: string | null;
   item: string;
   unidade_medida: string | null;
   custo_ideal: number | null;
