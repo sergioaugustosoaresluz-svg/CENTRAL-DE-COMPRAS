@@ -7,3 +7,10 @@ COMPRAS/
 MODELOv2.xlsb
 PROJETOS COMPRAS 2026.pptx
 BASE CSC - COMPRAS.xlsx
+
+# next.js
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
