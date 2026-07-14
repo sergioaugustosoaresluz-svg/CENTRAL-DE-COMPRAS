@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/solicitacao", label: "Solicitação" },
   { href: "/cotacao", label: "Cotação" },
   { href: "/cadastros", label: "Cadastros" },
+  { href: "/parametrizacao", label: "Parametrização" },
 ];
 
 export function NavBar() {

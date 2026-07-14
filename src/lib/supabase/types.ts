@@ -1,5 +1,12 @@
 export type ItemStatus = "pendente_especificacao" | "aprovado";
 
+export interface Parametro {
+  chave: string;
+  valor: string;
+  descricao: string | null;
+  updated_at: string;
+}
+
 export type SolicitacaoStatus =
   | "aguardando_especificacao"
   | "aguardando_cotacao"
