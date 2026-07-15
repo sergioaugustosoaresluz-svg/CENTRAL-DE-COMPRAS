@@ -27,6 +27,11 @@ function inicioEFimDoMes(periodo: string) {
   return { inicioISO: inicio.toISOString(), fimISO: fim.toISOString() };
 }
 
+function diasNoMes(periodo: string) {
+  const [ano, mes] = periodo.split("-").map(Number);
+  return new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+}
+
 function formatarMoeda(v: number | null | undefined) {
   if (v == null) return "-";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -94,12 +99,16 @@ export default function DashboardPage() {
 
   const [kpiGastoTotal, setKpiGastoTotal] = useState(0);
   const [kpiSavingTotal, setKpiSavingTotal] = useState(0);
-  const [kpiSavingMedioPct, setKpiSavingMedioPct] = useState<number | null>(null);
+  const [kpiSavingSobreOrcadoPct, setKpiSavingSobreOrcadoPct] = useState<number | null>(null);
+  const [kpiSavingSobrePagoPct, setKpiSavingSobrePagoPct] = useState<number | null>(null);
   const [kpiSituacoes, setKpiSituacoes] = useState<Record<SituacaoCompra, number>>({
     aguardando_entrega: 0,
     recebido: 0,
     cancelado: 0,
   });
+  const [kpiItensComprados, setKpiItensComprados] = useState(0);
+  const [kpiValorCompraDiaria, setKpiValorCompraDiaria] = useState(0);
+  const [kpiQuantidadeCompraPorDia, setKpiQuantidadeCompraPorDia] = useState(0);
 
   const [savingPorComprador, setSavingPorComprador] = useState<DashboardSavingComprador[]>([]);
   const [savingPorItem, setSavingPorItem] = useState<DashboardSavingItem[]>([]);
@@ -107,11 +116,6 @@ export default function DashboardPage() {
   const [gastoPorUnidade, setGastoPorUnidade] = useState<DashboardGastoUnidade[]>([]);
   const [classificacaoPreco, setClassificacaoPreco] = useState<DashboardClassificacaoPreco[]>([]);
   const [carregandoDados, setCarregandoDados] = useState(true);
-
-  useEffect(() => {
-    if (isAdmin) carregar(periodo);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, periodo]);
 
   async function carregar(periodoSelecionado: string) {
     setCarregandoDados(true);
@@ -121,6 +125,7 @@ export default function DashboardPage() {
     const [
       compraSavingRes,
       situacoesRes,
+      comprasRecebidasRes,
       savingCompradorRes,
       savingItemRes,
       gastoFornecedorRes,
@@ -137,6 +142,12 @@ export default function DashboardPage() {
         .select("situacao")
         .gte("data_compra", inicioISO.slice(0, 10))
         .lt("data_compra", fimISO.slice(0, 10)),
+      supabase
+        .from("compras")
+        .select("valor_pago")
+        .eq("situacao", "recebido")
+        .gte("data_recebimento", inicioISO.slice(0, 10))
+        .lt("data_recebimento", fimISO.slice(0, 10)),
       supabase
         .from("dashboard_saving_por_comprador")
         .select("*")
@@ -166,13 +177,22 @@ export default function DashboardPage() {
     const valorOrcadoTotal = savingRows.reduce((acc, r) => acc + (r.valor_orcado ?? 0), 0);
     setKpiGastoTotal(gastoTotal);
     setKpiSavingTotal(savingTotal);
-    setKpiSavingMedioPct(valorOrcadoTotal > 0 ? (savingTotal / valorOrcadoTotal) * 100 : null);
+    setKpiSavingSobreOrcadoPct(valorOrcadoTotal > 0 ? (savingTotal / valorOrcadoTotal) * 100 : null);
+    setKpiSavingSobrePagoPct(gastoTotal > 0 ? (savingTotal / gastoTotal) * 100 : null);
 
     const contagem: Record<SituacaoCompra, number> = { aguardando_entrega: 0, recebido: 0, cancelado: 0 };
     ((situacoesRes.data as { situacao: SituacaoCompra }[] | null) ?? []).forEach((r) => {
       contagem[r.situacao] += 1;
     });
     setKpiSituacoes(contagem);
+
+    const comprasRecebidas = (comprasRecebidasRes.data as { valor_pago: number | null }[] | null) ?? [];
+    const dias = diasNoMes(periodoSelecionado);
+    setKpiItensComprados(comprasRecebidas.length);
+    setKpiValorCompraDiaria(
+      comprasRecebidas.reduce((acc, r) => acc + (r.valor_pago ?? 0), 0) / dias
+    );
+    setKpiQuantidadeCompraPorDia(comprasRecebidas.length / dias);
 
     setSavingPorComprador((savingCompradorRes.data as DashboardSavingComprador[]) ?? []);
     setSavingPorItem((savingItemRes.data as DashboardSavingItem[]) ?? []);
@@ -181,6 +201,11 @@ export default function DashboardPage() {
     setClassificacaoPreco((classificacaoRes.data as DashboardClassificacaoPreco[]) ?? []);
     setCarregandoDados(false);
   }
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    Promise.resolve().then(() => carregar(periodo));
+  }, [isAdmin, periodo]);
 
   if (loading) return null;
 
@@ -223,9 +248,12 @@ export default function DashboardPage() {
           sub={kpiSavingTotal < 0 ? "Acima do orçado" : "Abaixo do orçado"}
         />
         <StatTile
-          label="Saving médio"
-          value={kpiSavingMedioPct != null ? `${kpiSavingMedioPct.toFixed(1)}%` : "-"}
-          sub="Sobre o valor orçado"
+          label="% Saving sobre orçado"
+          value={kpiSavingSobreOrcadoPct != null ? `${kpiSavingSobreOrcadoPct.toFixed(1)}%` : "-"}
+        />
+        <StatTile
+          label="% Saving sobre pago"
+          value={kpiSavingSobrePagoPct != null ? `${kpiSavingSobrePagoPct.toFixed(1)}%` : "-"}
         />
         <div className={`${cardClass} space-y-1`}>
           <p className="text-sm text-zinc-500">Pedidos por situação</p>
@@ -236,6 +264,9 @@ export default function DashboardPage() {
             </p>
           ))}
         </div>
+        <StatTile label="Itens comprados" value={String(kpiItensComprados)} />
+        <StatTile label="Valor de compra diária" value={formatarMoeda(kpiValorCompraDiaria)} />
+        <StatTile label="Quantidade de compra por dia" value={kpiQuantidadeCompraPorDia.toFixed(2)} />
       </section>
 
       {carregandoDados ? (
