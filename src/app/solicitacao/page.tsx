@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Item, SolicitacaoStatus } from "@/lib/supabase/types";
+import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao } from "@/lib/supabase/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import {
@@ -81,6 +81,10 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
   const [itemId, setItemId] = useState("");
   const [itemNovo, setItemNovo] = useState(false);
   const [descricaoNovoItem, setDescricaoNovoItem] = useState("");
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaId, setCategoriaId] = useState("");
+  const [camposCategoria, setCamposCategoria] = useState<CategoriaCampoEspecificacao[]>([]);
+  const [especificacoes, setEspecificacoes] = useState<Record<string, string>>({});
   const [quantidade, setQuantidade] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [minhasSolicitacoes, setMinhasSolicitacoes] = useState<
@@ -95,9 +99,29 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
       .select("*")
       .order("item")
       .then(({ data }) => setItens(data ?? []));
+    supabase
+      .from("categorias")
+      .select("*")
+      .eq("ativo", true)
+      .order("nome")
+      .then(({ data }) => setCategorias(data ?? []));
     carregarMinhasSolicitacoes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const consulta = categoriaId
+      ? supabase
+          .from("categoria_campos_especificacao")
+          .select("*")
+          .eq("categoria_id", categoriaId)
+          .order("ordem")
+      : Promise.resolve({ data: [] as CategoriaCampoEspecificacao[] });
+    consulta.then(({ data }) => {
+      setCamposCategoria(data ?? []);
+      setEspecificacoes({});
+    });
+  }, [categoriaId]);
 
   async function carregarMinhasSolicitacoes() {
     const { data } = await supabase
@@ -112,6 +136,10 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
     if (!quantidade) return;
     if (!itemNovo && !itemId) return;
     if (itemNovo && !descricaoNovoItem.trim()) return;
+    if (itemNovo && !categoriaId) return;
+    if (itemNovo && camposCategoria.some((c) => c.obrigatorio && !(especificacoes[c.campo_chave] ?? "").trim())) {
+      return;
+    }
 
     setEnviando(true);
     setMensagem(null);
@@ -120,9 +148,17 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
       let statusInicial: SolicitacaoStatus;
 
       if (itemNovo) {
+        const especificacoesPreenchidas = Object.fromEntries(
+          Object.entries(especificacoes).filter(([, v]) => v.trim() !== "")
+        );
         const { data: novoItem, error: erroItem } = await supabase
           .from("itens")
-          .insert({ item: descricaoNovoItem.trim(), status: "pendente_especificacao" })
+          .insert({
+            item: descricaoNovoItem.trim(),
+            status: "pendente_especificacao",
+            categoria_id: categoriaId,
+            especificacoes: Object.keys(especificacoesPreenchidas).length > 0 ? especificacoesPreenchidas : null,
+          })
           .select()
           .single();
         if (erroItem || !novoItem) throw erroItem ?? new Error("Falha ao criar item");
@@ -149,6 +185,8 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
       setItemId("");
       setItemNovo(false);
       setDescricaoNovoItem("");
+      setCategoriaId("");
+      setEspecificacoes({});
       setQuantidade("");
       setObservacoes("");
       carregarMinhasSolicitacoes();
@@ -174,14 +212,48 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
         </label>
 
         {itemNovo ? (
-          <label className="block text-sm space-y-1">
-            <span>Descrição do item</span>
-            <input
-              value={descricaoNovoItem}
-              onChange={(e) => setDescricaoNovoItem(e.target.value)}
-              className={inputClass}
-            />
-          </label>
+          <>
+            <label className="block text-sm space-y-1">
+              <span>Descrição do item</span>
+              <input
+                value={descricaoNovoItem}
+                onChange={(e) => setDescricaoNovoItem(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            <label className="block text-sm space-y-1">
+              <span>Categoria</span>
+              <select
+                value={categoriaId}
+                onChange={(e) => setCategoriaId(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Selecione...</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {camposCategoria.map((campo) => (
+              <label key={campo.campo_chave} className="block text-sm space-y-1">
+                <span>
+                  {campo.campo_label}
+                  {campo.obrigatorio && <span className="text-red-600 dark:text-red-400"> *</span>}
+                </span>
+                <input
+                  value={especificacoes[campo.campo_chave] ?? ""}
+                  onChange={(e) =>
+                    setEspecificacoes((prev) => ({ ...prev, [campo.campo_chave]: e.target.value }))
+                  }
+                  className={inputClass}
+                />
+              </label>
+            ))}
+          </>
         ) : (
           <label className="block text-sm space-y-1">
             <span>Item</span>
@@ -282,6 +354,9 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
   const { isAdmin } = useAuth();
   const [pendentes, setPendentes] = useState<ItemPendente[]>([]);
   const [selecionado, setSelecionado] = useState<ItemPendente | null>(null);
+  const [camposDaCategoriaSelecionada, setCamposDaCategoriaSelecionada] = useState<
+    CategoriaCampoEspecificacao[]
+  >([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     codigo: "",
@@ -319,6 +394,16 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
       unidade_medida: item.unidade_medida ?? "",
       custo_ideal: item.custo_ideal != null ? String(item.custo_ideal) : "",
     });
+    if (item.categoria_id) {
+      supabase
+        .from("categoria_campos_especificacao")
+        .select("*")
+        .eq("categoria_id", item.categoria_id)
+        .order("ordem")
+        .then(({ data }) => setCamposDaCategoriaSelecionada(data ?? []));
+    } else {
+      setCamposDaCategoriaSelecionada([]);
+    }
   }
 
   async function aprovarItem() {
@@ -548,6 +633,20 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
           <h2 className="font-medium">
             Complementar especificação — {selecionado.item}
           </h2>
+
+          {selecionado.especificacoes && Object.keys(selecionado.especificacoes).length > 0 && (
+            <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">
+              <p className="font-medium">Especificações informadas pelo solicitante</p>
+              {Object.entries(selecionado.especificacoes).map(([chave, valor]) => (
+                <p key={chave}>
+                  <span className="text-muted">
+                    {camposDaCategoriaSelecionada.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
+                  </span>{" "}
+                  {valor}
+                </p>
+              ))}
+            </div>
+          )}
 
           <label className="block text-sm space-y-1">
             <span>Código do item</span>

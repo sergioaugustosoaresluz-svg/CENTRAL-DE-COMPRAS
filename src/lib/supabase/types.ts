@@ -49,7 +49,26 @@ export interface Item {
   modelo: string | null;
   dimensoes: string | null;
   status: ItemStatus;
+  categoria_id: string | null;
+  especificacoes: Record<string, string> | null;
   created_at: string;
+}
+
+export interface Categoria {
+  id: string;
+  codigo: string;
+  nome: string;
+  ativo: boolean;
+  created_at: string;
+}
+
+export interface CategoriaCampoEspecificacao {
+  id: string;
+  categoria_id: string;
+  campo_chave: string;
+  campo_label: string;
+  obrigatorio: boolean;
+  ordem: number;
 }
 
 export interface Solicitacao {
