@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Unidade } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { Badge } from "@/components/Badge";
 
 interface ErroSupabase {
   code?: string;
@@ -17,17 +18,7 @@ const FORM_VAZIO = {
 };
 
 function UnidadeStatusBadge({ ativo }: { ativo: boolean }) {
-  return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        ativo
-          ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-          : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-      }`}
-    >
-      {ativo ? "Ativa" : "Inativa"}
-    </span>
-  );
+  return <Badge tone={ativo ? "green" : "gray"}>{ativo ? "Ativa" : "Inativa"}</Badge>;
 }
 
 export default function UnidadesPage() {
@@ -164,9 +155,9 @@ export default function UnidadesPage() {
       {lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhuma unidade encontrada.</p>
       ) : (
-        <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+        <table className={tableClass}>
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+            <tr className={theadRowClass}>
               <th>Código</th>
               <th>Nome</th>
               <th>Status</th>
@@ -179,7 +170,7 @@ export default function UnidadesPage() {
               <tr
                 key={u.id}
                 onClick={() => abrirEdicao(u)}
-                className="border-b border-zinc-100 dark:border-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{u.codigo}</td>
                 <td>{u.nome}</td>

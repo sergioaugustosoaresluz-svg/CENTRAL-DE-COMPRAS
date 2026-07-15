@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, UNIDADES } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, UNIDADES, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { Badge } from "@/components/Badge";
 
 interface ErroSupabase {
   code?: string;
@@ -22,17 +23,7 @@ const FORM_VAZIO = {
 
 function ItemStatusBadge({ status }: { status: Item["status"] }) {
   const aprovado = status === "aprovado";
-  return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        aprovado
-          ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-          : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-      }`}
-    >
-      {aprovado ? "Aprovado" : "Pendente de especificação"}
-    </span>
-  );
+  return <Badge tone={aprovado ? "green" : "amber"}>{aprovado ? "Aprovado" : "Pendente de especificação"}</Badge>;
 }
 
 export default function ItensPage() {
@@ -170,9 +161,9 @@ export default function ItensPage() {
       {lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum item encontrado.</p>
       ) : (
-        <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+        <table className={tableClass}>
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+            <tr className={theadRowClass}>
               <th>Código</th>
               <th>Item</th>
               <th>Marca</th>
@@ -185,7 +176,7 @@ export default function ItensPage() {
               <tr
                 key={i.id}
                 onClick={() => abrirEdicao(i)}
-                className="border-b border-zinc-100 dark:border-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{i.codigo ?? "-"}</td>
                 <td>{i.item}</td>

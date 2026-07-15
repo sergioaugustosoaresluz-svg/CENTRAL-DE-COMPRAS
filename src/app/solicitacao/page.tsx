@@ -13,6 +13,9 @@ import {
   cardClass,
   UNIDADES,
   gerarCodigo,
+  tableClass,
+  theadRowClass,
+  tbodyRowClass,
 } from "@/components/ui";
 
 type Tab = "solicitante" | "comprador";
@@ -229,9 +232,9 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
         {minhasSolicitacoes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação ainda.</p>
         ) : (
-          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+          <table className={tableClass}>
             <thead>
-              <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+              <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
                 <th>Quantidade</th>
@@ -241,7 +244,7 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
             </thead>
             <tbody>
               {minhasSolicitacoes.map((s) => (
-                <tr key={s.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                <tr key={s.id} className={tbodyRowClass}>
                   <td className="py-2">{s.codigo}</td>
                   <td>{s.itens?.item}</td>
                   <td>{s.quantidade}</td>
@@ -487,9 +490,9 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
         {pendentes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhum item pendente de especificação.</p>
         ) : (
-          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+          <table className={tableClass}>
             <thead>
-              <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+              <tr className={theadRowClass}>
                 <th className="py-2">
                   <input
                     type="checkbox"
@@ -507,7 +510,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
             </thead>
             <tbody>
               {pendentes.map((p) => (
-                <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                <tr key={p.id} className={tbodyRowClass}>
                   <td className="py-2">
                     <input
                       type="checkbox"

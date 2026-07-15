@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Parametro } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 
 export default function ParametrizacaoPage() {
   const [lista, setLista] = useState<Parametro[]>([]);
@@ -66,9 +66,9 @@ export default function ParametrizacaoPage() {
       {lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum parâmetro cadastrado.</p>
       ) : (
-        <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+        <table className={tableClass}>
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+            <tr className={theadRowClass}>
               <th>Chave</th>
               <th>Valor</th>
               <th>Descrição</th>
@@ -80,7 +80,7 @@ export default function ParametrizacaoPage() {
               <tr
                 key={p.chave}
                 onClick={() => abrirEdicao(p)}
-                className="border-b border-zinc-100 dark:border-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{p.chave}</td>
                 <td>{p.valor}</td>

@@ -4,34 +4,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { Badge, type BadgeTone } from "@/components/Badge";
 
 function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
   if (!classificacao) {
-    return (
-      <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-        Sem histórico de referência
-      </span>
-    );
+    return <Badge tone="gray">Sem histórico de referência</Badge>;
   }
-  const config: Record<NonNullable<CotacaoClassificacao["classificacao"]>, { label: string; classes: string }> = {
-    bom_preco: {
-      label: "Bom Preço",
-      classes: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-    },
-    preco_justo: {
-      label: "Preço Justo",
-      classes: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-    },
-    preco_caro: {
-      label: "Preço Caro",
-      classes: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
-    },
+  const config: Record<NonNullable<CotacaoClassificacao["classificacao"]>, { label: string; tone: BadgeTone }> = {
+    bom_preco: { label: "Bom Preço", tone: "green" },
+    preco_justo: { label: "Preço Justo", tone: "amber" },
+    preco_caro: { label: "Preço Caro", tone: "red" },
   };
-  const { label, classes } = config[classificacao];
-  return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${classes}`}>{label}</span>
-  );
+  const { label, tone } = config[classificacao];
+  return <Badge tone={tone}>{label}</Badge>;
 }
 
 function origemReferenciaTexto(origem: CotacaoClassificacao["origem_referencia"]): string | null {
@@ -233,9 +219,9 @@ function VisaoComprador() {
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando cotação.</p>
         ) : (
-          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+          <table className={tableClass}>
             <thead>
-              <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+              <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
                 <th>Quantidade</th>
@@ -246,7 +232,7 @@ function VisaoComprador() {
             </thead>
             <tbody>
               {lista.map((s) => (
-                <tr key={s.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                <tr key={s.id} className={tbodyRowClass}>
                   <td className="py-2">{s.codigo}</td>
                   <td>{s.itens?.item}</td>
                   <td>{s.quantidade}</td>
@@ -272,9 +258,9 @@ function VisaoComprador() {
           <p className="text-sm">{contagemSelecionada} de 3 cotações registradas</p>
 
           {cotacoesDaSolicitacao.length > 0 && (
-            <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+            <table className={tableClass}>
               <thead>
-                <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+                <tr className={theadRowClass}>
                   <th className="py-2">Fornecedor</th>
                   <th>Preço</th>
                   <th>Prazo entrega</th>
@@ -286,7 +272,7 @@ function VisaoComprador() {
                 {cotacoesDaSolicitacao.map((c) => (
                   <tr
                     key={c.id}
-                    className={`border-b border-zinc-100 dark:border-zinc-900 ${
+                    className={`${tbodyRowClass} ${
                       c.id === vencedoraId ? "bg-green-50 dark:bg-green-900/20 font-medium" : ""
                     }`}
                   >
@@ -512,9 +498,9 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando aprovação.</p>
         ) : (
-          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+          <table className={tableClass}>
             <thead>
-              <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+              <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
                 <th>Quantidade</th>
@@ -529,7 +515,7 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
               {lista.map((s) => {
                 const m = melhores[s.id];
                 return (
-                  <tr key={s.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                  <tr key={s.id} className={tbodyRowClass}>
                     <td className="py-2">{s.codigo}</td>
                     <td>{s.itens?.item}</td>
                     <td>{s.quantidade}</td>
@@ -556,9 +542,9 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
             {selecionada.codigo} — {selecionada.itens?.item}
           </h2>
 
-          <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+          <table className={tableClass}>
             <thead>
-              <tr className="text-left border-b border-zinc-200 dark:border-zinc-800">
+              <tr className={theadRowClass}>
                 <th className="py-2">Fornecedor</th>
                 <th>Preço</th>
                 <th>Prazo entrega</th>
@@ -570,7 +556,7 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
               {cotacoes.map((c) => (
                 <tr
                   key={c.id}
-                  className={`border-b border-zinc-100 dark:border-zinc-900 ${
+                  className={`${tbodyRowClass} ${
                     c.id === vencedoraId ? "bg-green-50 dark:bg-green-900/20 font-medium" : ""
                   }`}
                 >

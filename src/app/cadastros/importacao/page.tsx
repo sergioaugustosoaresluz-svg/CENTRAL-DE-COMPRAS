@@ -4,7 +4,7 @@ import { useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { inputClass, buttonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 
 type Tabela = "compradores" | "solicitantes" | "aprovadores" | "fornecedores" | "itens";
 
@@ -286,9 +286,9 @@ export default function ImportacaoPage() {
           </p>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+            <table className={tableClass}>
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                <tr className={theadRowClass}>
                   <th>Linha</th>
                   {COLUNAS[tabela].map((c) => (
                     <th key={c}>{c}</th>
@@ -300,7 +300,7 @@ export default function ImportacaoPage() {
                 {linhas.map((l) => (
                   <tr
                     key={l.linha}
-                    className={`border-b border-zinc-100 dark:border-zinc-900 ${
+                    className={`${tbodyRowClass} ${
                       l.valido ? "" : "bg-red-50 dark:bg-red-900/20"
                     }`}
                   >
@@ -338,16 +338,16 @@ export default function ImportacaoPage() {
             {resultado.ignorados.length} ignorado{resultado.ignorados.length === 1 ? "" : "s"}
           </h2>
           {resultado.ignorados.length > 0 && (
-            <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+            <table className={tableClass}>
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                <tr className={theadRowClass}>
                   <th>Linha</th>
                   <th>Motivo</th>
                 </tr>
               </thead>
               <tbody>
                 {resultado.ignorados.map((i) => (
-                  <tr key={i.linha} className="border-b border-zinc-100 dark:border-zinc-900">
+                  <tr key={i.linha} className={tbodyRowClass}>
                     <td>{i.linha}</td>
                     <td>{i.motivo}</td>
                   </tr>

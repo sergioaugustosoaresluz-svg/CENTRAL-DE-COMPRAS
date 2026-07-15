@@ -26,7 +26,7 @@ export default function CadastrosPage() {
           <Link
             key={c.href}
             href={c.href}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-900"
+            className="rounded-lg border border-hairline bg-white p-4 text-sm font-medium shadow-sm transition-colors hover:bg-surface-muted dark:bg-surface-muted"
           >
             {c.titulo}
           </Link>

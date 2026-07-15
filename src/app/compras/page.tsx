@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SituacaoCompra } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { Badge, type BadgeTone } from "@/components/Badge";
 
 interface ErroSupabase {
   code?: string;
@@ -17,18 +18,14 @@ const SITUACAO_LABEL: Record<SituacaoCompra, string> = {
   cancelado: "Cancelado",
 };
 
-const SITUACAO_CLASSES: Record<SituacaoCompra, string> = {
-  aguardando_entrega: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  recebido: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  cancelado: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+const SITUACAO_TONS: Record<SituacaoCompra, BadgeTone> = {
+  aguardando_entrega: "blue",
+  recebido: "green",
+  cancelado: "red",
 };
 
 function SituacaoBadge({ situacao }: { situacao: SituacaoCompra }) {
-  return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${SITUACAO_CLASSES[situacao]}`}>
-      {SITUACAO_LABEL[situacao]}
-    </span>
-  );
+  return <Badge tone={SITUACAO_TONS[situacao]}>{SITUACAO_LABEL[situacao]}</Badge>;
 }
 
 interface CompraLista {
@@ -165,9 +162,9 @@ export default function ComprasPage() {
           {lista.length === 0 ? (
             <p className="text-sm text-zinc-500">Nenhuma compra registrada ainda.</p>
           ) : (
-            <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+            <table className={tableClass}>
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                <tr className={theadRowClass}>
                   <th>Nº Pedido</th>
                   <th>Solicitação</th>
                   <th>Item</th>
@@ -179,7 +176,7 @@ export default function ComprasPage() {
               </thead>
               <tbody>
                 {lista.map((c) => (
-                  <tr key={c.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                  <tr key={c.id} className={tbodyRowClass}>
                     <td className="py-2">{c.numero_pedido}</td>
                     <td>{c.solicitacoes?.codigo}</td>
                     <td>{c.solicitacoes?.itens?.item}</td>

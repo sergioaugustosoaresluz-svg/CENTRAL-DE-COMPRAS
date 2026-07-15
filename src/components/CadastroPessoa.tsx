@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Pessoa } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 
 type TabelaPessoa = "compradores" | "solicitantes" | "aprovadores";
 
@@ -132,9 +132,9 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
       {lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum cadastro encontrado.</p>
       ) : (
-        <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+        <table className={tableClass}>
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+            <tr className={theadRowClass}>
               <th>Código</th>
               <th>Nome</th>
               <th>Função</th>
@@ -146,7 +146,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
               <tr
                 key={p.id}
                 onClick={() => abrirEdicao(p)}
-                className="border-b border-zinc-100 dark:border-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{p.codigo}</td>
                 <td>{p.nome_completo}</td>

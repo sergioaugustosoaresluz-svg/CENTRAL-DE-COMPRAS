@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 
 interface ErroSupabase {
   code?: string;
@@ -153,9 +153,9 @@ export default function FornecedoresPage() {
       {lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum fornecedor encontrado.</p>
       ) : (
-        <table className="w-full text-sm border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:pr-4 [&_td]:py-2 [&_td]:pr-4">
+        <table className={tableClass}>
           <thead>
-            <tr className="border-b border-zinc-200 dark:border-zinc-800">
+            <tr className={theadRowClass}>
               <th>Código</th>
               <th>Fornecedor</th>
               <th>Contato</th>
@@ -168,7 +168,7 @@ export default function FornecedoresPage() {
               <tr
                 key={f.id}
                 onClick={() => abrirEdicao(f)}
-                className="border-b border-zinc-100 dark:border-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{f.codigo}</td>
                 <td>{f.fornecedor}</td>
