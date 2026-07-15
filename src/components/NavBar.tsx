@@ -15,14 +15,16 @@ const LINKS = [
 
 export function NavBar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
 
   if (pathname === "/login") return null;
+
+  const links = isAdmin ? [...LINKS, { href: "/dashboard", label: "Dashboard" }] : LINKS;
 
   return (
     <nav className="border-b border-zinc-200 dark:border-zinc-800 px-8 py-3 flex items-center justify-between">
       <div className="flex gap-6">
-        {LINKS.map((l) => {
+        {links.map((l) => {
           const ativo = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (
             <Link

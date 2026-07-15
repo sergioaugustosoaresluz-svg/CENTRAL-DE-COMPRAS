@@ -129,3 +129,55 @@ export interface Unidade {
   ativo: boolean;
   created_at: string;
 }
+
+export interface CompraSaving {
+  compra_id: string;
+  comprador_id: string | null;
+  item_id: string;
+  data_recebimento: string | null;
+  valor_orcado: number | null;
+  valor_pago: number | null;
+  saving: number | null;
+}
+
+export interface DashboardSavingComprador {
+  codigo: string;
+  nome_completo: string;
+  comprador_id: string;
+  mes: string;
+  saving_total: number;
+  saving_medio: number;
+  qtd_compras: number;
+}
+
+export interface DashboardSavingItem {
+  codigo: string;
+  item: string;
+  item_id: string;
+  mes: string;
+  saving_total: number;
+  saving_medio: number;
+  qtd_compras: number;
+}
+
+export interface DashboardGastoFornecedor {
+  codigo: string;
+  fornecedor: string;
+  mes: string;
+  total_gasto: number;
+  qtd_compras: number;
+}
+
+export interface DashboardGastoUnidade {
+  codigo: string;
+  nome: string;
+  mes: string;
+  total_gasto: number;
+  qtd_compras: number;
+}
+
+export interface DashboardClassificacaoPreco {
+  mes: string;
+  classificacao: Classificacao;
+  quantidade: number;
+}
