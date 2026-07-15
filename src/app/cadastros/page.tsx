@@ -9,6 +9,7 @@ const CADASTROS = [
   { href: "/cadastros/aprovadores", titulo: "Aprovadores" },
   { href: "/cadastros/fornecedores", titulo: "Fornecedores" },
   { href: "/cadastros/itens", titulo: "Itens" },
+  { href: "/cadastros/unidades", titulo: "Unidades" },
 ];
 
 export default function CadastrosPage() {

@@ -102,6 +102,8 @@ export interface CotacaoClassificacao {
   classificacao: Classificacao | null;
 }
 
+export type SituacaoCompra = "aguardando_entrega" | "recebido" | "cancelado";
+
 export interface Compra {
   id: string;
   solicitacao_id: string;
@@ -110,5 +112,20 @@ export interface Compra {
   aprovador_id: string | null;
   preco_final: number;
   data_compra: string;
+  created_at: string;
+  numero_pedido: number;
+  valor_orcado: number | null;
+  valor_contraproposta: number | null;
+  valor_pago: number | null;
+  nota_fiscal: string | null;
+  data_recebimento: string | null;
+  situacao: SituacaoCompra;
+}
+
+export interface Unidade {
+  id: string;
+  codigo: string;
+  nome: string;
+  ativo: boolean;
   created_at: string;
 }
