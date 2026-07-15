@@ -43,7 +43,7 @@ export default function ItensPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
 
   useEffect(() => {
     carregar();
@@ -84,23 +84,28 @@ export default function ItensPage() {
     if (e.code === "42501") {
       return "Você não tem permissão para esta ação.";
     }
+    if (e.code === "23503") {
+      return "Este item já foi usado em uma ou mais solicitações e não pode ser excluído, para preservar o histórico de compras.";
+    }
     return e.message ?? "Erro desconhecido.";
   }
 
   async function excluir(e: React.MouseEvent, i: Item) {
     e.stopPropagation();
     if (!window.confirm(`Tem certeza que deseja excluir "${i.item}"?`)) return;
+    setMensagem(null);
     const { error } = await supabase.from("itens").delete().eq("id", i.id);
     if (error) {
-      setMensagem(mensagemDeErro(error));
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(error) });
       return;
     }
+    setMensagem({ tipo: "sucesso", texto: `Item "${i.item}" excluído com sucesso.` });
     carregar();
   }
 
   async function salvar() {
     if (!form.item.trim()) {
-      setMensagem("A descrição do item é obrigatória.");
+      setMensagem({ tipo: "erro", texto: "A descrição do item é obrigatória." });
       return;
     }
     setSalvando(true);
@@ -123,7 +128,7 @@ export default function ItensPage() {
       setAberto(false);
       carregar();
     } catch (e) {
-      setMensagem(mensagemDeErro(e as ErroSupabase));
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
       setSalvando(false);
     }
@@ -142,6 +147,18 @@ export default function ItensPage() {
         Itens criados aqui entram como &quot;pendente de especificação&quot; e são aprovados
         na tela de Solicitação (visão comprador).
       </p>
+
+      {mensagem && (
+        <p
+          className={`text-sm ${
+            mensagem.tipo === "erro"
+              ? "text-red-600 dark:text-red-400"
+              : "text-green-600 dark:text-green-400"
+          }`}
+        >
+          {mensagem.texto}
+        </p>
+      )}
 
       <input
         value={busca}
@@ -263,8 +280,6 @@ export default function ItensPage() {
               Cancelar
             </button>
           </div>
-
-          {mensagem && <p className="text-sm text-red-600 dark:text-red-400">{mensagem}</p>}
         </section>
       )}
     </main>

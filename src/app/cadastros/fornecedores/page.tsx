@@ -28,7 +28,7 @@ export default function FornecedoresPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
 
   useEffect(() => {
     carregar();
@@ -72,23 +72,28 @@ export default function FornecedoresPage() {
     if (e.code === "23505") {
       return "Já existe um fornecedor com este código.";
     }
+    if (e.code === "23503") {
+      return "Este fornecedor já foi usado em uma ou mais cotações e não pode ser excluído, para preservar o histórico de compras.";
+    }
     return e.message ?? "Erro desconhecido.";
   }
 
   async function excluir(e: React.MouseEvent, f: Fornecedor) {
     e.stopPropagation();
     if (!window.confirm(`Tem certeza que deseja excluir "${f.fornecedor}"?`)) return;
+    setMensagem(null);
     const { error } = await supabase.from("fornecedores").delete().eq("id", f.id);
     if (error) {
-      setMensagem(mensagemDeErro(error));
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(error) });
       return;
     }
+    setMensagem({ tipo: "sucesso", texto: `Fornecedor "${f.fornecedor}" excluído com sucesso.` });
     carregar();
   }
 
   async function salvar() {
     if (!form.codigo.trim() || !form.fornecedor.trim()) {
-      setMensagem("Código e nome do fornecedor são obrigatórios.");
+      setMensagem({ tipo: "erro", texto: "Código e nome do fornecedor são obrigatórios." });
       return;
     }
     setSalvando(true);
@@ -111,7 +116,7 @@ export default function FornecedoresPage() {
       setAberto(false);
       carregar();
     } catch (e) {
-      setMensagem(mensagemDeErro(e as ErroSupabase));
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
       setSalvando(false);
     }
@@ -125,6 +130,18 @@ export default function FornecedoresPage() {
           Novo cadastro
         </button>
       </div>
+
+      {mensagem && (
+        <p
+          className={`text-sm ${
+            mensagem.tipo === "erro"
+              ? "text-red-600 dark:text-red-400"
+              : "text-green-600 dark:text-green-400"
+          }`}
+        >
+          {mensagem.texto}
+        </p>
+      )}
 
       <input
         value={busca}
@@ -238,8 +255,6 @@ export default function FornecedoresPage() {
               Cancelar
             </button>
           </div>
-
-          {mensagem && <p className="text-sm text-red-600 dark:text-red-400">{mensagem}</p>}
         </section>
       )}
     </main>
