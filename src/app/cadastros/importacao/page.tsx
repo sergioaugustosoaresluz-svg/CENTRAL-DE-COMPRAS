@@ -79,8 +79,8 @@ export default function ImportacaoPage() {
 
   if (!isAdmin) {
     return (
-      <main className="max-w-3xl mx-auto p-8">
-        <h1 className="text-2xl font-semibold mb-6">Importação</h1>
+      <main className="max-w-3xl mx-auto p-8 space-y-6">
+        <h1 className="text-2xl font-semibold">Importação</h1>
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
       </main>
     );

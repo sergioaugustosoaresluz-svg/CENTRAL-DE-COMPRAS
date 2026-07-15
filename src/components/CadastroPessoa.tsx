@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Pessoa } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 
 type TabelaPessoa = "compradores" | "solicitantes" | "aprovadores";
 
@@ -33,7 +34,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     carregar();
@@ -84,7 +85,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
 
   async function salvar() {
     if (!form.codigo.trim() || !form.nome_completo.trim()) {
-      setMensagem("Código e nome completo são obrigatórios.");
+      setMensagem({ tipo: "erro", texto: "Código e nome completo são obrigatórios." });
       return;
     }
     setSalvando(true);
@@ -107,7 +108,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
       setAberto(false);
       carregar();
     } catch (e) {
-      setMensagem(mensagemDeErro(e as ErroSupabase));
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
       setSalvando(false);
     }
@@ -226,7 +227,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
             </button>
           </div>
 
-          {mensagem && <p className="text-sm text-red-600 dark:text-red-400">{mensagem}</p>}
+          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </main>

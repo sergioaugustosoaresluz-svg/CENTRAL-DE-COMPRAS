@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 
 function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
   if (!classificacao) {
@@ -40,15 +41,15 @@ export default function CotacaoPage() {
   if (loading) return null;
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold mb-6">Cotação</h1>
+    <main className="max-w-4xl mx-auto p-8 space-y-6">
+      <h1 className="text-2xl font-semibold">Cotação</h1>
 
       {abas.length === 0 ? (
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
       ) : (
         <>
           {abas.length > 1 && (
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2">
               <button
                 onClick={() => setTab("comprador")}
                 className={abaAtiva === "comprador" ? buttonClass : secondaryButtonClass}
@@ -99,7 +100,7 @@ function VisaoComprador() {
     prazo_pagamento_dias: "",
   });
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     supabase
@@ -202,9 +203,9 @@ function VisaoComprador() {
       setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
       await carregarCotacoesDaSolicitacao(selecionada.id);
       await carregarLista();
-      setMensagem("Cotação registrada.");
+      setMensagem({ tipo: "sucesso", texto: "Cotação registrada." });
     } catch (e) {
-      setMensagem("Erro ao registrar cotação: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao registrar cotação: " + (e as Error).message });
     } finally {
       setSalvando(false);
     }
@@ -214,8 +215,8 @@ function VisaoComprador() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h2 className="font-medium mb-3">Registrar Cotações</h2>
+      <section className="space-y-3">
+        <h2 className="font-medium">Registrar Cotações</h2>
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando cotação.</p>
         ) : (
@@ -356,7 +357,7 @@ function VisaoComprador() {
             </button>
           )}
 
-          {mensagem && <p className="text-sm">{mensagem}</p>}
+          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </div>
@@ -380,7 +381,7 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([]);
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     supabase
@@ -458,11 +459,11 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
         .eq("id", selecionada.id);
       if (erroSolicitacao) throw erroSolicitacao;
 
-      setMensagem(`Solicitação ${selecionada.codigo} aprovada e compra registrada.`);
+      setMensagem({ tipo: "sucesso", texto: `Solicitação ${selecionada.codigo} aprovada e compra registrada.` });
       setSelecionada(null);
       carregarLista();
     } catch (e) {
-      setMensagem("Erro ao aprovar: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao aprovar: " + (e as Error).message });
     } finally {
       setProcessando(false);
     }
@@ -481,11 +482,11 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
         .update({ status: "rejeitada", observacoes: motivo, updated_at: new Date().toISOString() })
         .eq("id", selecionada.id);
       if (error) throw error;
-      setMensagem(`Solicitação ${selecionada.codigo} rejeitada.`);
+      setMensagem({ tipo: "sucesso", texto: `Solicitação ${selecionada.codigo} rejeitada.` });
       setSelecionada(null);
       carregarLista();
     } catch (e) {
-      setMensagem("Erro ao rejeitar: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao rejeitar: " + (e as Error).message });
     } finally {
       setProcessando(false);
     }
@@ -493,8 +494,8 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h2 className="font-medium mb-3">Cotações Aguardando Aprovação</h2>
+      <section className="space-y-3">
+        <h2 className="font-medium">Cotações Aguardando Aprovação</h2>
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando aprovação.</p>
         ) : (
@@ -582,7 +583,7 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
             </button>
           </div>
 
-          {mensagem && <p className="text-sm">{mensagem}</p>}
+          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </div>

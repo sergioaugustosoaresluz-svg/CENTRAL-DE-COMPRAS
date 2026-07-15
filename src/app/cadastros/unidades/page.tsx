@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Unidade } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge } from "@/components/Badge";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 
 interface ErroSupabase {
   code?: string;
@@ -29,7 +30,7 @@ export default function UnidadesPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     carregar();
@@ -133,17 +134,7 @@ export default function UnidadesPage() {
         </button>
       </div>
 
-      {mensagem && (
-        <p
-          className={`text-sm ${
-            mensagem.tipo === "erro"
-              ? "text-red-600 dark:text-red-400"
-              : "text-green-600 dark:text-green-400"
-          }`}
-        >
-          {mensagem.texto}
-        </p>
-      )}
+      <MensagemInline mensagem={mensagem} />
 
       <input
         value={busca}

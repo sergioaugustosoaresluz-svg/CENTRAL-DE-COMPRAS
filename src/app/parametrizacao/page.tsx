@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Parametro } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 
 export default function ParametrizacaoPage() {
   const [lista, setLista] = useState<Parametro[]>([]);
   const [editando, setEditando] = useState<Parametro | null>(null);
   const [valor, setValor] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     carregar();
@@ -43,9 +44,9 @@ export default function ParametrizacaoPage() {
     } catch (e) {
       const erro = e as { code?: string; message?: string };
       if (erro.code === "42501") {
-        setMensagem("Você não tem permissão para esta ação.");
+        setMensagem({ tipo: "erro", texto: "Você não tem permissão para esta ação." });
       } else {
-        setMensagem("Erro ao salvar: " + (erro.message ?? "erro desconhecido"));
+        setMensagem({ tipo: "erro", texto: "Erro ao salvar: " + (erro.message ?? "erro desconhecido") });
       }
     } finally {
       setSalvando(false);
@@ -114,7 +115,7 @@ export default function ParametrizacaoPage() {
             </button>
           </div>
 
-          {mensagem && <p className="text-sm text-red-600 dark:text-red-400">{mensagem}</p>}
+          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </main>

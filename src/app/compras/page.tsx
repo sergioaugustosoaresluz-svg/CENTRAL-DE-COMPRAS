@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { SituacaoCompra } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 
 interface ErroSupabase {
   code?: string;
@@ -59,7 +60,7 @@ export default function ComprasPage() {
   const [notaFiscal, setNotaFiscal] = useState("");
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [processando, setProcessando] = useState(false);
-  const [mensagem, setMensagem] = useState<{ tipo: "erro" | "sucesso"; texto: string } | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   const temAcesso = isComprador || isAprovador || isAdmin;
 
@@ -147,17 +148,7 @@ export default function ComprasPage() {
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
       ) : (
         <>
-          {mensagem && (
-            <p
-              className={`text-sm ${
-                mensagem.tipo === "erro"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-green-600 dark:text-green-400"
-              }`}
-            >
-              {mensagem.texto}
-            </p>
-          )}
+          <MensagemInline mensagem={mensagem} />
 
           {lista.length === 0 ? (
             <p className="text-sm text-zinc-500">Nenhuma compra registrada ainda.</p>

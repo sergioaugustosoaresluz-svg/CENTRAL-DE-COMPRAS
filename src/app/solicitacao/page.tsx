@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item, SolicitacaoStatus } from "@/lib/supabase/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import {
   inputClass,
   buttonClass,
@@ -32,15 +33,15 @@ export default function SolicitacaoPage() {
   if (loading) return null;
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold mb-6">Solicitação</h1>
+    <main className="max-w-4xl mx-auto p-8 space-y-6">
+      <h1 className="text-2xl font-semibold">Solicitação</h1>
 
       {abas.length === 0 ? (
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
       ) : (
         <>
           {abas.length > 1 && (
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2">
               <button
                 onClick={() => setTab("solicitante")}
                 className={abaAtiva === "solicitante" ? buttonClass : secondaryButtonClass}
@@ -86,7 +87,7 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
     SolicitacaoComItem[]
   >([]);
   const [enviando, setEnviando] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     supabase
@@ -144,7 +145,7 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
       });
       if (erroSolicitacao) throw erroSolicitacao;
 
-      setMensagem(`Solicitação ${codigo} criada com sucesso.`);
+      setMensagem({ tipo: "sucesso", texto: `Solicitação ${codigo} criada com sucesso.` });
       setItemId("");
       setItemNovo(false);
       setDescricaoNovoItem("");
@@ -152,7 +153,7 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
       setObservacoes("");
       carregarMinhasSolicitacoes();
     } catch (e) {
-      setMensagem("Erro ao criar solicitação: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao criar solicitação: " + (e as Error).message });
     } finally {
       setEnviando(false);
     }
@@ -224,11 +225,11 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
           {enviando ? "Enviando..." : "Enviar solicitação"}
         </button>
 
-        {mensagem && <p className="text-sm">{mensagem}</p>}
+        <MensagemInline mensagem={mensagem} />
       </section>
 
-      <section>
-        <h2 className="font-medium mb-3">Minhas solicitações</h2>
+      <section className="space-y-3">
+        <h2 className="font-medium">Minhas solicitações</h2>
         {minhasSolicitacoes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação ainda.</p>
         ) : (
@@ -292,7 +293,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
   });
   const [salvando, setSalvando] = useState(false);
   const [aprovandoSelecionados, setAprovandoSelecionados] = useState(false);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
   useEffect(() => {
     carregarPendentes();
@@ -323,7 +324,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
   async function aprovarItem() {
     if (!selecionado) return;
     if (!compradorId) {
-      setMensagem("Apenas compradores podem aprovar itens.");
+      setMensagem({ tipo: "erro", texto: "Apenas compradores podem aprovar itens." });
       return;
     }
     setSalvando(true);
@@ -355,15 +356,16 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
         if (erroSolicitacao) throw erroSolicitacao;
       }
 
-      setMensagem(
-        solicitacao
+      setMensagem({
+        tipo: "sucesso",
+        texto: solicitacao
           ? `Item aprovado. Solicitação ${solicitacao.codigo} liberada para cotação.`
-          : "Item aprovado."
-      );
+          : "Item aprovado.",
+      });
       setSelecionado(null);
       carregarPendentes();
     } catch (e) {
-      setMensagem("Erro ao aprovar item: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao aprovar item: " + (e as Error).message });
     } finally {
       setSalvando(false);
     }
@@ -386,7 +388,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
 
   async function aprovarSelecionados() {
     if (!compradorId) {
-      setMensagem("Apenas compradores podem aprovar itens.");
+      setMensagem({ tipo: "erro", texto: "Apenas compradores podem aprovar itens." });
       return;
     }
     if (selecionados.size === 0) return;
@@ -417,11 +419,11 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
         }
       }
 
-      setMensagem(`${alvos.length} item(ns) aprovado(s).`);
+      setMensagem({ tipo: "sucesso", texto: `${alvos.length} item(ns) aprovado(s).` });
       setSelecionados(new Set());
       carregarPendentes();
     } catch (e) {
-      setMensagem("Erro ao aprovar selecionados: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro ao aprovar selecionados: " + (e as Error).message });
     } finally {
       setAprovandoSelecionados(false);
     }
@@ -433,13 +435,13 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
     if (solicitacao) {
       const { error: erroSol } = await supabase.from("solicitacoes").delete().eq("id", solicitacao.id);
       if (erroSol) {
-        setMensagem("Erro ao excluir: " + erroSol.message);
+        setMensagem({ tipo: "erro", texto: "Erro ao excluir: " + erroSol.message });
         return;
       }
     }
     const { error } = await supabase.from("itens").delete().eq("id", item.id);
     if (error) {
-      setMensagem("Erro ao excluir: " + error.message);
+      setMensagem({ tipo: "erro", texto: "Erro ao excluir: " + error.message });
       return;
     }
     if (selecionado?.id === item.id) setSelecionado(null);
@@ -459,11 +461,11 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
         .update({ observacoes: motivo, updated_at: new Date().toISOString() })
         .eq("id", solicitacao.id);
       if (error) throw error;
-      setMensagem("Solicitado mais detalhes ao solicitante.");
+      setMensagem({ tipo: "sucesso", texto: "Solicitado mais detalhes ao solicitante." });
       setSelecionado(null);
       carregarPendentes();
     } catch (e) {
-      setMensagem("Erro: " + (e as Error).message);
+      setMensagem({ tipo: "erro", texto: "Erro: " + (e as Error).message });
     } finally {
       setSalvando(false);
     }
@@ -486,7 +488,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
             </button>
           )}
         </div>
-        {mensagem && !selecionado && <p className="text-sm">{mensagem}</p>}
+        {!selecionado && <MensagemInline mensagem={mensagem} />}
         {pendentes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhum item pendente de especificação.</p>
         ) : (
@@ -624,7 +626,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
             )}
           </div>
 
-          {mensagem && <p className="text-sm">{mensagem}</p>}
+          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </div>
