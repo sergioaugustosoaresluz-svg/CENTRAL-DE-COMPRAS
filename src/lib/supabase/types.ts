@@ -90,6 +90,18 @@ export interface CotacaoMelhorOpcao {
   valor_presente: number;
 }
 
+export type OrigemReferencia = "custo_ideal" | "ultima_compra";
+export type Classificacao = "bom_preco" | "preco_justo" | "preco_caro";
+
+export interface CotacaoClassificacao {
+  solicitacao_id: string;
+  cotacao_vencedora_id: string;
+  menor_preco_cotado: number;
+  preco_referencia: number | null;
+  origem_referencia: OrigemReferencia | null;
+  classificacao: Classificacao | null;
+}
+
 export interface Compra {
   id: string;
   solicitacao_id: string;

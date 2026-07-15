@@ -3,8 +3,42 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Fornecedor, Cotacao, CotacaoMelhorOpcao } from "@/lib/supabase/types";
+import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass } from "@/components/ui";
+
+function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
+  if (!classificacao) {
+    return (
+      <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+        Sem histórico de referência
+      </span>
+    );
+  }
+  const config: Record<NonNullable<CotacaoClassificacao["classificacao"]>, { label: string; classes: string }> = {
+    bom_preco: {
+      label: "Bom Preço",
+      classes: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+    },
+    preco_justo: {
+      label: "Preço Justo",
+      classes: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    },
+    preco_caro: {
+      label: "Preço Caro",
+      classes: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+    },
+  };
+  const { label, classes } = config[classificacao];
+  return (
+    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${classes}`}>{label}</span>
+  );
+}
+
+function origemReferenciaTexto(origem: CotacaoClassificacao["origem_referencia"]): string | null {
+  if (origem === "ultima_compra") return "Referência: última compra registrada para este item.";
+  if (origem === "custo_ideal") return "Referência: custo ideal cadastrado (nenhuma compra anterior deste item).";
+  return null;
+}
 
 type Tab = "comprador" | "aprovador";
 
@@ -71,6 +105,7 @@ function VisaoComprador() {
     (Cotacao & { fornecedores: { fornecedor: string } | null })[]
   >([]);
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
+  const [classificacao, setClassificacao] = useState<CotacaoClassificacao | null>(null);
   const [form, setForm] = useState({
     fornecedor_id: "",
     preco: "",
@@ -116,6 +151,7 @@ function VisaoComprador() {
     setSelecionada(row);
     setMensagem(null);
     setVencedoraId(null);
+    setClassificacao(null);
     setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
     await carregarCotacoesDaSolicitacao(row.id);
   }
@@ -137,6 +173,15 @@ function VisaoComprador() {
         .eq("solicitacao_id", solicitacaoId)
         .single();
       setVencedoraId((melhor as CotacaoMelhorOpcao | null)?.cotacao_vencedora_id ?? null);
+
+      const { data: classif } = await supabase
+        .from("cotacoes_classificacao")
+        .select("*")
+        .eq("solicitacao_id", solicitacaoId)
+        .maybeSingle();
+      setClassificacao((classif as CotacaoClassificacao | null) ?? null);
+    } else {
+      setClassificacao(null);
     }
   }
 
@@ -257,6 +302,17 @@ function VisaoComprador() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {contagemSelecionada === 3 && (
+            <div className="space-y-1">
+              <ClassificacaoBadge classificacao={classificacao?.classificacao ?? null} />
+              {origemReferenciaTexto(classificacao?.origem_referencia ?? null) && (
+                <p className="text-xs text-zinc-500">
+                  {origemReferenciaTexto(classificacao?.origem_referencia ?? null)}
+                </p>
+              )}
+            </div>
           )}
 
           {contagemSelecionada < 3 ? (
