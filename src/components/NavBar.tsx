@@ -22,18 +22,18 @@ export function NavBar() {
   const links = isAdmin ? [...LINKS, { href: "/dashboard", label: "Dashboard" }] : LINKS;
 
   return (
-    <nav className="border-b border-zinc-200 dark:border-zinc-800 px-8 py-3 flex items-center justify-between">
-      <div className="flex gap-6">
+    <nav className="bg-surface-muted border-b border-hairline px-8 flex items-center justify-between">
+      <div className="flex items-stretch gap-1">
         {links.map((l) => {
           const ativo = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (
             <Link
               key={l.href}
               href={l.href}
-              className={`text-sm font-medium ${
+              className={`flex items-center border-b-2 px-3 py-4 text-sm transition-colors ${
                 ativo
-                  ? "text-black dark:text-white"
-                  : "text-zinc-500 hover:text-black dark:hover:text-white"
+                  ? "border-primary font-semibold text-primary"
+                  : "border-transparent font-medium text-muted hover:border-primary/30 hover:text-primary"
               }`}
             >
               {l.label}
@@ -43,11 +43,11 @@ export function NavBar() {
       </div>
 
       {user && (
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-500">{user.email}</span>
+        <div className="flex items-center gap-4 border-l border-hairline pl-4">
+          <span className="text-sm text-muted">{user.email}</span>
           <button
             onClick={signOut}
-            className="text-sm font-medium text-zinc-500 hover:text-black dark:hover:text-white"
+            className="rounded-md px-2.5 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-primary-soft hover:text-primary"
           >
             Sair
           </button>

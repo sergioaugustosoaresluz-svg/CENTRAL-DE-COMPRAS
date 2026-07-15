@@ -3,11 +3,25 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Paleta corporativa: azul marinho como cor de marca, neutros para o resto. */
+  --primary: #1e3a5f; /* azul marinho corporativo */
+  --primary-hover: #16304f; /* estado hover/pressed do azul principal */
+  --primary-soft: #e8eef5; /* tinta clara do azul, para destaques sutis (ex: item ativo) */
+  --muted: #5b6b7f; /* cinza neutro (levemente azulado) para texto secundário */
+  --surface-muted: #f5f7fa; /* branco/cinza muito claro, para fundos sutis (ex: navbar) */
+  --hairline: #e2e7ed; /* borda sutil, neutra e azulada */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-muted: var(--muted);
+  --color-surface-muted: var(--surface-muted);
+  --color-hairline: var(--hairline);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,6 +30,13 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --primary: #5b8fc7;
+    --primary-hover: #6fa0d6;
+    --primary-soft: #1b2a3d;
+    --muted: #9aa4b2;
+    --surface-muted: #15181e;
+    --hairline: #262b33;
   }
 }
 
