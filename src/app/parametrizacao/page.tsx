@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { Parametro } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 export default function ParametrizacaoPage() {
   const [lista, setLista] = useState<Parametro[]>([]);
@@ -54,7 +55,7 @@ export default function ParametrizacaoPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Parametrização</h1>
 
       <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-sm text-amber-900 dark:text-amber-200">
@@ -118,6 +119,6 @@ export default function ParametrizacaoPage() {
           <MensagemInline mensagem={mensagem} />
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

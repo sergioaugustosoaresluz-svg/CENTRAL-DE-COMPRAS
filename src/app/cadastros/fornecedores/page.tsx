@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 interface ErroSupabase {
   code?: string;
@@ -124,7 +125,7 @@ export default function FornecedoresPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Fornecedores</h1>
         <button onClick={abrirNovo} className={buttonClass}>
@@ -248,6 +249,6 @@ export default function FornecedoresPage() {
           </div>
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

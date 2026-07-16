@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase/client";
 import { cardClass } from "@/components/ui";
+import { PageContainer } from "@/components/PageContainer";
 
 interface SolicitacaoFarolRow {
   id: string;
@@ -222,7 +223,7 @@ export default function Home() {
   const hrefTodasCotacao = isComprador || isAdmin ? "/cotacao?aba=comprador" : "/cotacao?aba=aprovador";
 
   return (
-    <main className="max-w-5xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Central de Compras</h1>
 
       {carregando ? (
@@ -263,6 +264,6 @@ export default function Home() {
           )}
         </div>
       )}
-    </main>
+    </PageContainer>
   );
 }

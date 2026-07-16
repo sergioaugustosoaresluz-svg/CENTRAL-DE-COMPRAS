@@ -8,6 +8,7 @@ import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } fr
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
   if (!classificacao) {
@@ -55,7 +56,7 @@ function CotacaoPageConteudo() {
   if (loading) return null;
 
   return (
-    <main className="max-w-4xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Cotação</h1>
 
       {abas.length === 0 ? (
@@ -85,7 +86,7 @@ function CotacaoPageConteudo() {
           )}
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
 

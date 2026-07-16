@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { inputClass, buttonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { PageContainer } from "@/components/PageContainer";
 
 type Tabela = "compradores" | "solicitantes" | "aprovadores" | "fornecedores" | "itens";
 
@@ -79,10 +80,10 @@ export default function ImportacaoPage() {
 
   if (!isAdmin) {
     return (
-      <main className="max-w-3xl mx-auto p-8 space-y-6">
+      <PageContainer>
         <h1 className="text-2xl font-semibold">Importação</h1>
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
-      </main>
+      </PageContainer>
     );
   }
 
@@ -250,7 +251,7 @@ export default function ImportacaoPage() {
   const invalidas = linhas.length - validas;
 
   return (
-    <main className="max-w-4xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Importação</h1>
 
       <label className="block text-sm space-y-1 max-w-sm">
@@ -357,6 +358,6 @@ export default function ImportacaoPage() {
           )}
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

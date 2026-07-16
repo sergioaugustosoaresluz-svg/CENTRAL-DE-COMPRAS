@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { inputClass, buttonClass, cardClass } from "@/components/ui";
+import { PageContainer } from "@/components/PageContainer";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center p-8">
+    <PageContainer variant="center">
       <form onSubmit={entrar} className={`${cardClass} w-full max-w-sm`}>
         <h1 className="text-xl font-semibold">Entrar</h1>
 
@@ -61,6 +62,6 @@ export default function LoginPage() {
 
         {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
       </form>
-    </main>
+    </PageContainer>
   );
 }

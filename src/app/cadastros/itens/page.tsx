@@ -7,6 +7,7 @@ import type { Item } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, UNIDADES, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 interface ErroSupabase {
   code?: string;
@@ -127,7 +128,7 @@ export default function ItensPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Itens</h1>
         <button onClick={abrirNovo} className={buttonClass}>
@@ -264,6 +265,6 @@ export default function ItensPage() {
           </div>
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

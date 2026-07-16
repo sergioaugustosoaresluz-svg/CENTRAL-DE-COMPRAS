@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { Pessoa } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 type TabelaPessoa = "compradores" | "solicitantes" | "aprovadores";
 
@@ -115,7 +116,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{titulo}</h1>
         <button onClick={abrirNovo} className={buttonClass}>
@@ -230,6 +231,6 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
           <MensagemInline mensagem={mensagem} />
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

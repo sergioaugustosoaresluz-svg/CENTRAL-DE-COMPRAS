@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao } from "@/lib/supabase/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer, formCardWidthClass } from "@/components/PageContainer";
 import {
   inputClass,
   buttonClass,
@@ -47,7 +48,7 @@ function SolicitacaoPageConteudo() {
   if (loading) return null;
 
   return (
-    <main className="max-w-4xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Solicitação</h1>
 
       {abas.length === 0 ? (
@@ -79,7 +80,7 @@ function SolicitacaoPageConteudo() {
           )}
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
 
@@ -229,7 +230,7 @@ function VisaoSolicitante({
 
   return (
     <div className="space-y-8">
-      <section className={cardClass}>
+      <section className={`${cardClass} ${formCardWidthClass}`}>
         <h2 className="font-medium">Nova Solicitação</h2>
 
         <label className="flex items-center gap-2 text-sm">

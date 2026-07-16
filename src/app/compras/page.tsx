@@ -8,6 +8,7 @@ import type { SituacaoCompra } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 interface ErroSupabase {
   code?: string;
@@ -162,7 +163,7 @@ function ComprasPageConteudo() {
   if (loading) return null;
 
   return (
-    <main className="max-w-4xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Compras</h1>
 
       {!temAcesso ? (
@@ -307,6 +308,6 @@ function ComprasPageConteudo() {
           )}
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }

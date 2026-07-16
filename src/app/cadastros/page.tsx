@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageContainer } from "@/components/PageContainer";
 
 const CADASTROS = [
   { href: "/cadastros/compradores", titulo: "Compradores" },
@@ -19,7 +20,7 @@ export default function CadastrosPage() {
     : CADASTROS;
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <h1 className="text-2xl font-semibold">Cadastros</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {cadastros.map((c) => (
@@ -32,6 +33,6 @@ export default function CadastrosPage() {
           </Link>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 }

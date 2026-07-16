@@ -7,6 +7,7 @@ import type { Unidade } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
+import { PageContainer } from "@/components/PageContainer";
 
 interface ErroSupabase {
   code?: string;
@@ -126,7 +127,7 @@ export default function UnidadesPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Unidades</h1>
         <button onClick={abrirNovo} className={buttonClass}>
@@ -218,6 +219,6 @@ export default function UnidadesPage() {
           </div>
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

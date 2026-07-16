@@ -14,6 +14,7 @@ import type {
   Classificacao,
 } from "@/lib/supabase/types";
 import { inputClass, cardClass } from "@/components/ui";
+import { PageContainer } from "@/components/PageContainer";
 
 function mesAtualDefault() {
   const hoje = new Date();
@@ -211,10 +212,10 @@ export default function DashboardPage() {
 
   if (!isAdmin) {
     return (
-      <main className="max-w-5xl mx-auto p-8 space-y-6">
+      <PageContainer>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-zinc-500">Você não tem acesso a esta área.</p>
-      </main>
+      </PageContainer>
     );
   }
 
@@ -226,7 +227,7 @@ export default function DashboardPage() {
   const totalClassificacao = classificacaoPreco.reduce((acc, c) => acc + c.quantidade, 0);
 
   return (
-    <main className="max-w-5xl mx-auto p-8 space-y-6">
+    <PageContainer>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <label className="flex items-center gap-2 text-sm">
@@ -386,6 +387,6 @@ export default function DashboardPage() {
           </section>
         </>
       )}
-    </main>
+    </PageContainer>
   );
 }
