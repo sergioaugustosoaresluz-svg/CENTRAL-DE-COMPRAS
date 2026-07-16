@@ -109,7 +109,6 @@ function VisaoComprador() {
       .order("fornecedor")
       .then(({ data }) => setFornecedores(data ?? []));
     carregarLista();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function carregarLista() {
@@ -389,7 +388,6 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
       .select("*")
       .then(({ data }) => setFornecedores(data ?? []));
     carregarLista();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function nomeFornecedor(id: string) {

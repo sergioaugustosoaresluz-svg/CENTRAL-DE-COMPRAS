@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scripts utilitarios Node, fora do app Next.js (nao seguem as regras de TS/React do app).
+    "supabase/**",
   ]),
 ]);
 

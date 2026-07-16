@@ -66,7 +66,6 @@ export default function ComprasPage() {
 
   useEffect(() => {
     if (temAcesso) carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [temAcesso]);
 
   async function carregar() {

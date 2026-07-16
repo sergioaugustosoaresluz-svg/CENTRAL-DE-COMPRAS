@@ -21,7 +21,7 @@ export default function LoginPage() {
       if (error) throw error;
       router.push("/");
       router.refresh();
-    } catch (e) {
+    } catch {
       setErro("E-mail ou senha inválidos.");
     } finally {
       setEntrando(false);
