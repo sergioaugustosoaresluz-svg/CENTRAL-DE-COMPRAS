@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SituacaoCompra } from "@/lib/supabase/types";
@@ -52,6 +53,16 @@ function mensagemDeErro(e: ErroSupabase): string {
 }
 
 export default function ComprasPage() {
+  return (
+    <Suspense fallback={null}>
+      <ComprasPageConteudo />
+    </Suspense>
+  );
+}
+
+function ComprasPageConteudo() {
+  const searchParams = useSearchParams();
+  const codigoFoco = searchParams.get("codigo");
   const { loading, isComprador, isAprovador, isAdmin } = useAuth();
   const [lista, setLista] = useState<CompraLista[]>([]);
   const [selecionada, setSelecionada] = useState<CompraLista | null>(null);
@@ -61,6 +72,7 @@ export default function ComprasPage() {
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
+  const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
   const temAcesso = isComprador || isAprovador || isAdmin;
 
@@ -86,6 +98,16 @@ export default function ComprasPage() {
     setNotaFiscal(c.nota_fiscal ?? "");
     setDataRecebimento(new Date().toISOString().slice(0, 10));
   }
+
+  useEffect(() => {
+    if (!codigoFoco || codigoJaAberto || lista.length === 0) return;
+    const alvo = lista.find((c) => c.solicitacoes?.codigo === codigoFoco);
+    if (!alvo) return;
+    Promise.resolve().then(() => {
+      selecionar(alvo);
+      setCodigoJaAberto(true);
+    });
+  }, [lista, codigoFoco, codigoJaAberto]);
 
   async function registrarRecebimento() {
     if (!selecionada) return;

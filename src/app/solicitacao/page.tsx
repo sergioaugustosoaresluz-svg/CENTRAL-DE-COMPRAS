@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao } from "@/lib/supabase/types";
@@ -22,12 +23,25 @@ import {
 type Tab = "solicitante" | "comprador";
 
 export default function SolicitacaoPage() {
+  return (
+    <Suspense fallback={null}>
+      <SolicitacaoPageConteudo />
+    </Suspense>
+  );
+}
+
+function SolicitacaoPageConteudo() {
+  const searchParams = useSearchParams();
+  const abaParam = searchParams.get("aba");
+  const codigoFoco = searchParams.get("codigo");
   const { loading, isSolicitante, isComprador, isAdmin, solicitanteId, compradorId } = useAuth();
   const abas: Tab[] = [
     ...(isSolicitante ? (["solicitante"] as const) : []),
     ...(isComprador || isAdmin ? (["comprador"] as const) : []),
   ];
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useState<Tab | null>(() =>
+    abaParam === "solicitante" || abaParam === "comprador" ? abaParam : null
+  );
   const abaAtiva = tab && abas.includes(tab) ? tab : abas[0] ?? null;
 
   if (loading) return null;
@@ -58,9 +72,11 @@ export default function SolicitacaoPage() {
           )}
 
           {abaAtiva === "solicitante" && solicitanteId && (
-            <VisaoSolicitante solicitanteId={solicitanteId} />
+            <VisaoSolicitante solicitanteId={solicitanteId} codigoFoco={codigoFoco} />
           )}
-          {abaAtiva === "comprador" && <VisaoComprador compradorId={compradorId} />}
+          {abaAtiva === "comprador" && (
+            <VisaoComprador compradorId={compradorId} codigoFoco={codigoFoco} />
+          )}
         </>
       )}
     </main>
@@ -76,7 +92,13 @@ interface SolicitacaoComItem {
   itens: { item: string } | null;
 }
 
-function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
+function VisaoSolicitante({
+  solicitanteId,
+  codigoFoco,
+}: {
+  solicitanteId: string;
+  codigoFoco: string | null;
+}) {
   const [itens, setItens] = useState<Item[]>([]);
   const [itemId, setItemId] = useState("");
   const [itemNovo, setItemNovo] = useState(false);
@@ -92,6 +114,14 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
   >([]);
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
+  const [codigoDestacado, setCodigoDestacado] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!codigoFoco) return;
+    const alvo = minhasSolicitacoes.find((s) => s.codigo === codigoFoco);
+    if (!alvo) return;
+    Promise.resolve().then(() => setCodigoDestacado(codigoFoco));
+  }, [minhasSolicitacoes, codigoFoco]);
 
   useEffect(() => {
     supabase
@@ -317,7 +347,10 @@ function VisaoSolicitante({ solicitanteId }: { solicitanteId: string }) {
             </thead>
             <tbody>
               {minhasSolicitacoes.map((s) => (
-                <tr key={s.id} className={tbodyRowClass}>
+                <tr
+                  key={s.id}
+                  className={`${tbodyRowClass} ${s.codigo === codigoDestacado ? "bg-primary-soft" : ""}`}
+                >
                   <td className="py-2">{s.codigo}</td>
                   <td>{s.itens?.item}</td>
                   <td>{s.quantidade}</td>
@@ -350,7 +383,13 @@ function solicitacaoLigada(item: ItemPendente): SolicitacaoLigada | null {
   return item.solicitacoes?.[0] ?? null;
 }
 
-function VisaoComprador({ compradorId }: { compradorId: string | null }) {
+function VisaoComprador({
+  compradorId,
+  codigoFoco,
+}: {
+  compradorId: string | null;
+  codigoFoco: string | null;
+}) {
   const { isAdmin } = useAuth();
   const [pendentes, setPendentes] = useState<ItemPendente[]>([]);
   const [selecionado, setSelecionado] = useState<ItemPendente | null>(null);
@@ -369,6 +408,7 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
   const [salvando, setSalvando] = useState(false);
   const [aprovandoSelecionados, setAprovandoSelecionados] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
+  const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
   useEffect(() => {
     carregarPendentes();
@@ -405,6 +445,16 @@ function VisaoComprador({ compradorId }: { compradorId: string | null }) {
       setCamposDaCategoriaSelecionada([]);
     }
   }
+
+  useEffect(() => {
+    if (!codigoFoco || codigoJaAberto || pendentes.length === 0) return;
+    const alvo = pendentes.find((p) => solicitacaoLigada(p)?.codigo === codigoFoco);
+    if (!alvo) return;
+    Promise.resolve().then(() => {
+      selecionar(alvo);
+      setCodigoJaAberto(true);
+    });
+  }, [pendentes, codigoFoco, codigoJaAberto]);
 
   async function aprovarItem() {
     if (!selecionado) return;

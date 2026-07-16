@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } from "@/lib/supabase/types";
@@ -30,12 +31,25 @@ function origemReferenciaTexto(origem: CotacaoClassificacao["origem_referencia"]
 type Tab = "comprador" | "aprovador";
 
 export default function CotacaoPage() {
+  return (
+    <Suspense fallback={null}>
+      <CotacaoPageConteudo />
+    </Suspense>
+  );
+}
+
+function CotacaoPageConteudo() {
+  const searchParams = useSearchParams();
+  const abaParam = searchParams.get("aba");
+  const codigoFoco = searchParams.get("codigo");
   const { loading, isComprador, isAprovador, aprovadorId } = useAuth();
   const abas: Tab[] = [
     ...(isComprador ? (["comprador"] as const) : []),
     ...(isAprovador ? (["aprovador"] as const) : []),
   ];
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useState<Tab | null>(() =>
+    abaParam === "comprador" || abaParam === "aprovador" ? abaParam : null
+  );
   const abaAtiva = tab && abas.includes(tab) ? tab : abas[0] ?? null;
 
   if (loading) return null;
@@ -65,8 +79,10 @@ export default function CotacaoPage() {
             </div>
           )}
 
-          {abaAtiva === "comprador" && <VisaoComprador />}
-          {abaAtiva === "aprovador" && aprovadorId && <VisaoAprovador aprovadorId={aprovadorId} />}
+          {abaAtiva === "comprador" && <VisaoComprador codigoFoco={codigoFoco} />}
+          {abaAtiva === "aprovador" && aprovadorId && (
+            <VisaoAprovador aprovadorId={aprovadorId} codigoFoco={codigoFoco} />
+          )}
         </>
       )}
     </main>
@@ -83,7 +99,7 @@ interface SolicitacaoResumo {
   solicitantes: { nome_completo: string } | null;
 }
 
-function VisaoComprador() {
+function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [lista, setLista] = useState<SolicitacaoResumo[]>([]);
   const [contagens, setContagens] = useState<Record<string, number>>({});
@@ -101,6 +117,7 @@ function VisaoComprador() {
   });
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
+  const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
   useEffect(() => {
     supabase
@@ -141,6 +158,17 @@ function VisaoComprador() {
     setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
     await carregarCotacoesDaSolicitacao(row.id);
   }
+
+  useEffect(() => {
+    if (!codigoFoco || codigoJaAberto || lista.length === 0) return;
+    const alvo = lista.find((s) => s.codigo === codigoFoco);
+    if (!alvo) return;
+    Promise.resolve().then(() => {
+      selecionar(alvo);
+      setCodigoJaAberto(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lista, codigoFoco, codigoJaAberto]);
 
   async function carregarCotacoesDaSolicitacao(solicitacaoId: string) {
     const { data } = await supabase
@@ -372,7 +400,13 @@ interface SolicitacaoAprovacao {
   solicitantes: { nome_completo: string } | null;
 }
 
-function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
+function VisaoAprovador({
+  aprovadorId,
+  codigoFoco,
+}: {
+  aprovadorId: string;
+  codigoFoco: string | null;
+}) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [lista, setLista] = useState<SolicitacaoAprovacao[]>([]);
   const [melhores, setMelhores] = useState<Record<string, CotacaoMelhorOpcao>>({});
@@ -381,6 +415,7 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
+  const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
   useEffect(() => {
     supabase
@@ -427,6 +462,17 @@ function VisaoAprovador({ aprovadorId }: { aprovadorId: string }) {
     setCotacoes((data as Cotacao[]) ?? []);
     setVencedoraId(melhores[row.id]?.cotacao_vencedora_id ?? null);
   }
+
+  useEffect(() => {
+    if (!codigoFoco || codigoJaAberto || lista.length === 0) return;
+    const alvo = lista.find((s) => s.codigo === codigoFoco);
+    if (!alvo) return;
+    Promise.resolve().then(() => {
+      selecionar(alvo);
+      setCodigoJaAberto(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lista, codigoFoco, codigoJaAberto]);
 
   async function aprovar() {
     if (!selecionada || !vencedoraId) return;
