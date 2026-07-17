@@ -112,7 +112,16 @@ interface SolicitacaoResumo {
   quantidade: number;
   status: "aguardando_cotacao" | "em_cotacao" | "aguardando_aprovacao";
   comprador_id: string | null;
-  itens: { item: string; categoria_id: string | null; especificacoes: Record<string, string> | null } | null;
+  itens: {
+    item: string;
+    categoria_id: string | null;
+    especificacoes: Record<string, string> | null;
+    marca: string | null;
+    modelo: string | null;
+    dimensoes: string | null;
+    unidade_medida: string | null;
+    custo_ideal: number | null;
+  } | null;
   solicitantes: { nome_completo: string } | null;
   unidades: { nome: string } | null;
 }
@@ -151,7 +160,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     const { data } = await supabase
       .from("solicitacoes")
       .select(
-        "id, codigo, quantidade, status, comprador_id, itens(item, categoria_id, especificacoes), solicitantes(nome_completo), unidades(nome)"
+        "id, codigo, quantidade, status, comprador_id, itens(item, categoria_id, especificacoes, marca, modelo, dimensoes, unidade_medida, custo_ideal), solicitantes(nome_completo), unidades(nome)"
       )
       .in("status", ["aguardando_cotacao", "em_cotacao"])
       .order("created_at");
@@ -271,6 +280,19 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
 
   const contagemSelecionada = selecionada ? contagens[selecionada.id] ?? 0 : 0;
 
+  const especificacoesComprador = selecionada?.itens
+    ? [
+        { label: "Marca", valor: selecionada.itens.marca },
+        { label: "Modelo", valor: selecionada.itens.modelo },
+        { label: "Dimensões", valor: selecionada.itens.dimensoes },
+        { label: "Unidade de medida", valor: selecionada.itens.unidade_medida },
+        {
+          label: "Custo ideal",
+          valor: selecionada.itens.custo_ideal != null ? formatarMoeda(selecionada.itens.custo_ideal) : null,
+        },
+      ].filter((c): c is { label: string; valor: string } => !!c.valor)
+    : [];
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
@@ -327,6 +349,17 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                     {camposCategoria.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
                   </span>{" "}
                   {valor}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {especificacoesComprador.length > 0 && (
+            <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">
+              <p className="font-medium">Especificações completadas pelo comprador</p>
+              {especificacoesComprador.map((c) => (
+                <p key={c.label}>
+                  <span className="text-muted">{c.label}:</span> {c.valor}
                 </p>
               ))}
             </div>
