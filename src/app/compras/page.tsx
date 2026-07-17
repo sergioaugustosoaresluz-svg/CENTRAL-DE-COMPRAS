@@ -5,7 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { SituacaoCompra } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import {
+  inputClass,
+  buttonClass,
+  secondaryButtonClass,
+  dangerButtonClass,
+  cardClass,
+  tableClass,
+  theadRowClass,
+  tbodyRowClass,
+  formatarDataBR,
+} from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
@@ -42,7 +52,12 @@ interface CompraLista {
   data_recebimento: string | null;
   nota_fiscal: string | null;
   situacao: SituacaoCompra;
-  solicitacoes: { codigo: string; itens: { item: string } | null; unidades: { nome: string } | null } | null;
+  solicitacoes: {
+    codigo: string;
+    data_aprovacao: string | null;
+    itens: { item: string } | null;
+    unidades: { nome: string } | null;
+  } | null;
   cotacoes: { fornecedores: { fornecedor: string } | null } | null;
 }
 
@@ -85,7 +100,7 @@ function ComprasPageConteudo() {
     const { data } = await supabase
       .from("compras")
       .select(
-        "id, numero_pedido, preco_final, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
+        "id, numero_pedido, preco_final, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
       )
       .order("numero_pedido", { ascending: false });
     setLista((data as unknown as CompraLista[]) ?? []);
@@ -184,6 +199,8 @@ function ComprasPageConteudo() {
                   <th>Item</th>
                   <th>Fornecedor</th>
                   <th>Preço final</th>
+                  <th>Data de aprovação</th>
+                  <th>Data da compra</th>
                   <th>Situação</th>
                   <th></th>
                 </tr>
@@ -197,6 +214,12 @@ function ComprasPageConteudo() {
                     <td>{c.solicitacoes?.itens?.item}</td>
                     <td>{c.cotacoes?.fornecedores?.fornecedor}</td>
                     <td>{c.preco_final}</td>
+                    <td>
+                      {c.solicitacoes?.data_aprovacao
+                        ? new Date(c.solicitacoes.data_aprovacao).toLocaleDateString("pt-BR")
+                        : "-"}
+                    </td>
+                    <td>{formatarDataBR(c.data_compra)}</td>
                     <td>
                       <SituacaoBadge situacao={c.situacao} />
                     </td>
@@ -226,6 +249,14 @@ function ComprasPageConteudo() {
               </p>
               <p className="text-sm">
                 Valor orçado (preço da cotação vencedora): {selecionada.valor_orcado ?? "-"}
+              </p>
+              <p className="text-sm">
+                Data de aprovação:{" "}
+                {selecionada.solicitacoes?.data_aprovacao
+                  ? new Date(selecionada.solicitacoes.data_aprovacao).toLocaleDateString("pt-BR")
+                  : "-"}
+                {" · "}
+                Data da compra: {formatarDataBR(selecionada.data_compra)}
               </p>
               <p className="text-sm">
                 Situação atual: <SituacaoBadge situacao={selecionada.situacao} />

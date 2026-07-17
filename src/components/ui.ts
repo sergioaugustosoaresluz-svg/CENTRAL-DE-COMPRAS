@@ -32,3 +32,13 @@ export function formatarMoeda(v: number | null | undefined) {
   if (v == null) return "-";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+// Para colunas do tipo `date` (sem hora/fuso, ex: "2026-07-17"): reformata o
+// prefixo AAAA-MM-DD diretamente, sem passar por Date/toLocaleDateString, que
+// interpretam a string como meia-noite UTC e podem exibir o dia anterior em
+// fusos negativos (ex: America/Sao_Paulo).
+export function formatarDataBR(data: string | null | undefined) {
+  if (!data) return "-";
+  const [ano, mes, dia] = data.slice(0, 10).split("-");
+  return `${dia}/${mes}/${ano}`;
+}

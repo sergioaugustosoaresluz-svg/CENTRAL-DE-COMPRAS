@@ -20,6 +20,7 @@ import {
   theadRowClass,
   tbodyRowClass,
   formatarMoeda,
+  formatarDataBR,
 } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
@@ -342,6 +343,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                   <th>Prazo entrega</th>
                   <th>Prazo pagamento</th>
                   <th>Valor presente</th>
+                  <th>Data</th>
                 </tr>
               </thead>
               <tbody>
@@ -349,7 +351,9 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                   <tr
                     key={c.id}
                     className={`${tbodyRowClass} ${
-                      c.id === vencedoraId ? "bg-green-50 dark:bg-green-900/20 font-medium" : ""
+                      c.id === vencedoraId
+                        ? "bg-green-100 font-medium dark:bg-green-900/40"
+                        : "bg-green-50/70 dark:bg-green-950/20"
                     }`}
                   >
                     <td className="py-2">
@@ -360,6 +364,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                     <td>{c.prazo_entrega_dias ?? "-"} dias</td>
                     <td>{c.prazo_pagamento_dias} dias</td>
                     <td>{formatarMoeda(c.valor_presente)}</td>
+                    <td>{formatarDataBR(c.data_cotacao)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -462,6 +467,8 @@ function VisaoAprovador({
   const [selecionada, setSelecionada] = useState<SolicitacaoAprovacao | null>(null);
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([]);
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
+  const [melhorSelecionada, setMelhorSelecionada] = useState<CotacaoMelhorOpcao | null>(null);
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
@@ -505,13 +512,32 @@ function VisaoAprovador({
   async function selecionar(row: SolicitacaoAprovacao) {
     setSelecionada(row);
     setMensagem(null);
-    const { data } = await supabase
-      .from("cotacoes")
-      .select("*")
-      .eq("solicitacao_id", row.id)
-      .order("valor_presente", { ascending: true });
-    setCotacoes((data as Cotacao[]) ?? []);
-    setVencedoraId(melhores[row.id]?.cotacao_vencedora_id ?? null);
+    setVencedoraId(null);
+    setMelhorSelecionada(null);
+    setCarregandoDetalhe(true);
+    try {
+      const [{ data: cotacoesData }, { data: melhorData, error: melhorErro }] = await Promise.all([
+        supabase
+          .from("cotacoes")
+          .select("*")
+          .eq("solicitacao_id", row.id)
+          .order("valor_presente", { ascending: true }),
+        supabase.from("cotacoes_melhor_opcao").select("*").eq("solicitacao_id", row.id).maybeSingle(),
+      ]);
+      setCotacoes((cotacoesData as Cotacao[]) ?? []);
+      if (melhorErro || !melhorData) {
+        setMensagem({
+          tipo: "erro",
+          texto: "Não foi possível carregar a cotação vencedora desta solicitação. Feche e tente abrir novamente.",
+        });
+        return;
+      }
+      const melhor = melhorData as CotacaoMelhorOpcao;
+      setMelhorSelecionada(melhor);
+      setVencedoraId(melhor.cotacao_vencedora_id);
+    } finally {
+      setCarregandoDetalhe(false);
+    }
   }
 
   useEffect(() => {
@@ -522,23 +548,27 @@ function VisaoAprovador({
       selecionar(alvo);
       setCodigoJaAberto(true);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lista, codigoFoco, codigoJaAberto]);
 
   async function aprovar() {
-    if (!selecionada || !vencedoraId) return;
-    const melhor = melhores[selecionada.id];
-    if (!melhor) return;
+    if (!selecionada) return;
+    if (carregandoDetalhe || !vencedoraId || !melhorSelecionada) {
+      setMensagem({
+        tipo: "erro",
+        texto: "Os dados da cotação vencedora ainda estão carregando. Aguarde um instante e tente novamente.",
+      });
+      return;
+    }
 
     setProcessando(true);
     setMensagem(null);
     try {
       const { error: erroCompra } = await supabase.from("compras").insert({
         solicitacao_id: selecionada.id,
-        cotacao_id: melhor.cotacao_vencedora_id,
+        cotacao_id: melhorSelecionada.cotacao_vencedora_id,
         comprador_id: selecionada.comprador_id,
         aprovador_id: aprovadorId,
-        preco_final: melhor.preco,
+        preco_final: melhorSelecionada.preco,
       });
       if (erroCompra) throw erroCompra;
 
@@ -547,7 +577,7 @@ function VisaoAprovador({
         .update({
           aprovador_id: aprovadorId,
           data_aprovacao: new Date().toISOString(),
-          cotacao_vencedora_id: melhor.cotacao_vencedora_id,
+          cotacao_vencedora_id: melhorSelecionada.cotacao_vencedora_id,
           status: "concluida",
           updated_at: new Date().toISOString(),
         })
@@ -591,6 +621,7 @@ function VisaoAprovador({
     <div className="space-y-8">
       <section className="space-y-3">
         <h2 className="font-medium">Cotações Aguardando Aprovação</h2>
+        {!selecionada && <MensagemInline mensagem={mensagem} />}
         {lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando aprovação.</p>
         ) : (
@@ -673,8 +704,12 @@ function VisaoAprovador({
           </table>
 
           <div className="flex gap-2">
-            <button onClick={aprovar} disabled={processando} className={buttonClass}>
-              Aprovar
+            <button
+              onClick={aprovar}
+              disabled={processando || carregandoDetalhe || !vencedoraId}
+              className={buttonClass}
+            >
+              {carregandoDetalhe ? "Carregando..." : processando ? "Aprovando..." : "Aprovar"}
             </button>
             <button onClick={rejeitar} disabled={processando} className={secondaryButtonClass}>
               Rejeitar
