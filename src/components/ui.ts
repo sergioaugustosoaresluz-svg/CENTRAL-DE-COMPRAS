@@ -27,3 +27,8 @@ export const UNIDADES = ["UN", "PC", "CX", "KG", "L", "M", "M2", "M3", "PAR", "K
 export function gerarCodigo(prefixo: string) {
   return `${prefixo}-${Date.now().toString(36).toUpperCase()}`;
 }
+
+export function formatarMoeda(v: number | null | undefined) {
+  if (v == null) return "-";
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}

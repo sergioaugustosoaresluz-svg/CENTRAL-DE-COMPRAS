@@ -4,8 +4,23 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Fornecedor, Cotacao, CotacaoMelhorOpcao, CotacaoClassificacao } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import type {
+  Fornecedor,
+  Cotacao,
+  CotacaoMelhorOpcao,
+  CotacaoClassificacao,
+  CategoriaCampoEspecificacao,
+} from "@/lib/supabase/types";
+import {
+  inputClass,
+  buttonClass,
+  secondaryButtonClass,
+  cardClass,
+  tableClass,
+  theadRowClass,
+  tbodyRowClass,
+  formatarMoeda,
+} from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
@@ -96,7 +111,7 @@ interface SolicitacaoResumo {
   quantidade: number;
   status: "aguardando_cotacao" | "em_cotacao" | "aguardando_aprovacao";
   comprador_id: string | null;
-  itens: { item: string } | null;
+  itens: { item: string; categoria_id: string | null; especificacoes: Record<string, string> | null } | null;
   solicitantes: { nome_completo: string } | null;
   unidades: { nome: string } | null;
 }
@@ -111,6 +126,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   >([]);
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [classificacao, setClassificacao] = useState<CotacaoClassificacao | null>(null);
+  const [camposCategoria, setCamposCategoria] = useState<CategoriaCampoEspecificacao[]>([]);
   const [form, setForm] = useState({
     fornecedor_id: "",
     preco: "",
@@ -134,7 +150,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     const { data } = await supabase
       .from("solicitacoes")
       .select(
-        "id, codigo, quantidade, status, comprador_id, itens(item), solicitantes(nome_completo), unidades(nome)"
+        "id, codigo, quantidade, status, comprador_id, itens(item, categoria_id, especificacoes), solicitantes(nome_completo), unidades(nome)"
       )
       .in("status", ["aguardando_cotacao", "em_cotacao"])
       .order("created_at");
@@ -160,6 +176,16 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     setVencedoraId(null);
     setClassificacao(null);
     setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
+    if (row.itens?.categoria_id) {
+      const { data } = await supabase
+        .from("categoria_campos_especificacao")
+        .select("*")
+        .eq("categoria_id", row.itens.categoria_id)
+        .order("ordem");
+      setCamposCategoria(data ?? []);
+    } else {
+      setCamposCategoria([]);
+    }
     await carregarCotacoesDaSolicitacao(row.id);
   }
 
@@ -290,6 +316,21 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
             {selecionada.codigo} — {selecionada.itens?.item}
           </h2>
           <p className="text-sm text-muted">Unidade: {selecionada.unidades?.nome ?? "-"}</p>
+
+          {selecionada.itens?.especificacoes && Object.keys(selecionada.itens.especificacoes).length > 0 && (
+            <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">
+              <p className="font-medium">Especificações informadas pelo solicitante</p>
+              {Object.entries(selecionada.itens.especificacoes).map(([chave, valor]) => (
+                <p key={chave}>
+                  <span className="text-muted">
+                    {camposCategoria.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
+                  </span>{" "}
+                  {valor}
+                </p>
+              ))}
+            </div>
+          )}
+
           <p className="text-sm">{contagemSelecionada} de 3 cotações registradas</p>
 
           {cotacoesDaSolicitacao.length > 0 && (
@@ -315,10 +356,10 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                       {c.fornecedores?.fornecedor}
                       {c.id === vencedoraId ? " ★ vencedora" : ""}
                     </td>
-                    <td>{c.preco}</td>
+                    <td>{formatarMoeda(c.preco)}</td>
                     <td>{c.prazo_entrega_dias ?? "-"} dias</td>
                     <td>{c.prazo_pagamento_dias} dias</td>
-                    <td>{c.valor_presente}</td>
+                    <td>{formatarMoeda(c.valor_presente)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -578,8 +619,8 @@ function VisaoAprovador({
                     <td>{s.quantidade}</td>
                     <td>{s.solicitantes?.nome_completo}</td>
                     <td>{m ? nomeFornecedor(m.fornecedor_id) : "-"}</td>
-                    <td>{m?.preco ?? "-"}</td>
-                    <td>{m?.valor_presente ?? "-"}</td>
+                    <td>{formatarMoeda(m?.preco)}</td>
+                    <td>{formatarMoeda(m?.valor_presente)}</td>
                     <td>
                       <button onClick={() => selecionar(s)} className={secondaryButtonClass}>
                         Abrir
@@ -622,10 +663,10 @@ function VisaoAprovador({
                     {nomeFornecedor(c.fornecedor_id)}
                     {c.id === vencedoraId ? " ★ vencedora" : ""}
                   </td>
-                  <td>{c.preco}</td>
+                  <td>{formatarMoeda(c.preco)}</td>
                   <td>{c.prazo_entrega_dias ?? "-"} dias</td>
                   <td>{c.prazo_pagamento_dias} dias</td>
-                  <td>{c.valor_presente}</td>
+                  <td>{formatarMoeda(c.valor_presente)}</td>
                 </tr>
               ))}
             </tbody>

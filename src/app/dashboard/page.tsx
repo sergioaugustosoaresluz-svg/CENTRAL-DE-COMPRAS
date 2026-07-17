@@ -13,7 +13,7 @@ import type {
   SituacaoCompra,
   Classificacao,
 } from "@/lib/supabase/types";
-import { inputClass, cardClass } from "@/components/ui";
+import { inputClass, cardClass, formatarMoeda } from "@/components/ui";
 import { PageContainer } from "@/components/PageContainer";
 
 function mesAtualDefault() {
@@ -31,11 +31,6 @@ function inicioEFimDoMes(periodo: string) {
 function diasNoMes(periodo: string) {
   const [ano, mes] = periodo.split("-").map(Number);
   return new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-}
-
-function formatarMoeda(v: number | null | undefined) {
-  if (v == null) return "-";
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 const SITUACAO_LABEL: Record<SituacaoCompra, string> = {
