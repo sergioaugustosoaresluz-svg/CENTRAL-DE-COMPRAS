@@ -16,6 +16,7 @@ import {
   tbodyRowClass,
   formatarDataBR,
   formatarMoeda,
+  CampoMoeda,
 } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
@@ -83,8 +84,8 @@ function ComprasPageConteudo() {
   const { loading, isComprador, isAprovador, isAdmin } = useAuth();
   const [lista, setLista] = useState<CompraLista[]>([]);
   const [selecionada, setSelecionada] = useState<CompraLista | null>(null);
-  const [valorPago, setValorPago] = useState("");
-  const [valorContraproposta, setValorContraproposta] = useState("");
+  const [valorPago, setValorPago] = useState<number | null>(null);
+  const [valorContraproposta, setValorContraproposta] = useState<number | null>(null);
   const [notaFiscal, setNotaFiscal] = useState("");
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [processando, setProcessando] = useState(false);
@@ -110,8 +111,8 @@ function ComprasPageConteudo() {
   function selecionar(c: CompraLista) {
     setSelecionada(c);
     setMensagem(null);
-    setValorPago(c.valor_pago != null ? String(c.valor_pago) : String(c.preco_final));
-    setValorContraproposta(c.valor_contraproposta != null ? String(c.valor_contraproposta) : "");
+    setValorPago(c.valor_pago != null ? c.valor_pago : c.preco_final);
+    setValorContraproposta(c.valor_contraproposta);
     setNotaFiscal(c.nota_fiscal ?? "");
     setDataRecebimento(new Date().toISOString().slice(0, 10));
   }
@@ -128,7 +129,7 @@ function ComprasPageConteudo() {
 
   async function registrarRecebimento() {
     if (!selecionada) return;
-    if (!valorPago) {
+    if (valorPago == null) {
       setMensagem({ tipo: "erro", texto: "Informe o valor pago." });
       return;
     }
@@ -139,8 +140,8 @@ function ComprasPageConteudo() {
         .from("compras")
         .update({
           situacao: "recebido",
-          valor_pago: Number(valorPago),
-          valor_contraproposta: valorContraproposta ? Number(valorContraproposta) : null,
+          valor_pago: valorPago,
+          valor_contraproposta: valorContraproposta,
           nota_fiscal: notaFiscal.trim() || null,
           data_recebimento: dataRecebimento,
         })
@@ -268,21 +269,11 @@ function ComprasPageConteudo() {
                   <h3 className="text-sm font-medium">Registrar recebimento</h3>
                   <label className="block text-sm space-y-1">
                     <span>Valor pago</span>
-                    <input
-                      type="number"
-                      value={valorPago}
-                      onChange={(e) => setValorPago(e.target.value)}
-                      className={inputClass}
-                    />
+                    <CampoMoeda value={valorPago} onChange={setValorPago} />
                   </label>
                   <label className="block text-sm space-y-1">
                     <span>Valor de contraproposta (opcional)</span>
-                    <input
-                      type="number"
-                      value={valorContraproposta}
-                      onChange={(e) => setValorContraproposta(e.target.value)}
-                      className={inputClass}
-                    />
+                    <CampoMoeda value={valorContraproposta} onChange={setValorContraproposta} />
                     <span className="block text-xs text-zinc-500">
                       Preencha somente se houve renegociação e o valor final ficou diferente do
                       preço da cotação vencedora. Não é obrigatório.

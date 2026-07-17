@@ -1,3 +1,5 @@
+import type { ChangeEvent } from "react";
+
 export const inputClass =
   "w-full rounded-md border border-hairline bg-white dark:bg-surface-muted px-3 py-2 text-sm";
 
@@ -41,4 +43,50 @@ export function formatarDataBR(data: string | null | undefined) {
   if (!data) return "-";
   const [ano, mes, dia] = data.slice(0, 10).split("-");
   return `${dia}/${mes}/${ano}`;
+}
+
+// Input de moeda com mascara: os digitos digitados sao tratados como centavos
+// (da direita pra esquerda), entao "9500" vira "95,00" e "950000" vira
+// "9.500,00" — mesmo padrao usado por bibliotecas de mascara de moeda em React.
+// O valor exposto ao componente pai e sempre um numero puro (ou null).
+export function CampoMoeda({
+  value,
+  onChange,
+  className,
+  disabled,
+}: {
+  value: number | null;
+  onChange: (valor: number | null) => void;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const exibicao =
+    value != null
+      ? value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "";
+
+  function aoDigitar(e: ChangeEvent<HTMLInputElement>) {
+    const somenteDigitos = e.target.value.replace(/\D/g, "");
+    if (!somenteDigitos) {
+      onChange(null);
+      return;
+    }
+    onChange(Number(somenteDigitos) / 100);
+  }
+
+  return (
+    <div
+      className={`flex items-center gap-1 rounded-md border border-hairline bg-white px-3 py-2 text-sm dark:bg-surface-muted ${className ?? ""}`}
+    >
+      <span className="text-muted">R$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={exibicao}
+        onChange={aoDigitar}
+        disabled={disabled}
+        className="w-full bg-transparent outline-none disabled:cursor-not-allowed"
+      />
+    </div>
+  );
 }

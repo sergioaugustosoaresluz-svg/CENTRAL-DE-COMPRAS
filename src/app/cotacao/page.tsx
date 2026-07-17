@@ -21,6 +21,7 @@ import {
   tbodyRowClass,
   formatarMoeda,
   formatarDataBR,
+  CampoMoeda,
 } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
@@ -137,9 +138,14 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [classificacao, setClassificacao] = useState<CotacaoClassificacao | null>(null);
   const [camposCategoria, setCamposCategoria] = useState<CategoriaCampoEspecificacao[]>([]);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    fornecedor_id: string;
+    preco: number | null;
+    prazo_entrega_dias: string;
+    prazo_pagamento_dias: string;
+  }>({
     fornecedor_id: "",
-    preco: "",
+    preco: null,
     prazo_entrega_dias: "",
     prazo_pagamento_dias: "",
   });
@@ -185,7 +191,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     setMensagem(null);
     setVencedoraId(null);
     setClassificacao(null);
-    setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
+    setForm({ fornecedor_id: "", preco: null, prazo_entrega_dias: "", prazo_pagamento_dias: "" });
     if (row.itens?.categoria_id) {
       const { data } = await supabase
         .from("categoria_campos_especificacao")
@@ -241,7 +247,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
 
   async function adicionarCotacao() {
     if (!selecionada) return;
-    if (!form.fornecedor_id || !form.preco || !form.prazo_pagamento_dias) return;
+    if (!form.fornecedor_id || form.preco == null || !form.prazo_pagamento_dias) return;
 
     setSalvando(true);
     setMensagem(null);
@@ -249,7 +255,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
       const { error: erroCotacao } = await supabase.from("cotacoes").insert({
         solicitacao_id: selecionada.id,
         fornecedor_id: form.fornecedor_id,
-        preco: Number(form.preco),
+        preco: form.preco,
         prazo_entrega_dias: form.prazo_entrega_dias ? Number(form.prazo_entrega_dias) : null,
         prazo_pagamento_dias: Number(form.prazo_pagamento_dias),
       });
@@ -267,7 +273,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
         if (erroStatus) throw erroStatus;
       }
 
-      setForm({ fornecedor_id: "", preco: "", prazo_entrega_dias: "", prazo_pagamento_dias: "" });
+      setForm({ fornecedor_id: "", preco: null, prazo_entrega_dias: "", prazo_pagamento_dias: "" });
       await carregarCotacoesDaSolicitacao(selecionada.id);
       await carregarLista();
       setMensagem({ tipo: "sucesso", texto: "Cotação registrada." });
@@ -435,12 +441,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
               </label>
               <label className="block text-sm space-y-1">
                 <span>Preço</span>
-                <input
-                  type="number"
-                  value={form.preco}
-                  onChange={(e) => setForm({ ...form, preco: e.target.value })}
-                  className={inputClass}
-                />
+                <CampoMoeda value={form.preco} onChange={(preco) => setForm({ ...form, preco })} />
               </label>
               <label className="block text-sm space-y-1">
                 <span>Prazo de entrega (dias)</span>
