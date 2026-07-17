@@ -103,6 +103,8 @@ function VisaoSolicitante({
 }) {
   const [itens, setItens] = useState<Item[]>([]);
   const [itemId, setItemId] = useState("");
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemDropdownAberto, setItemDropdownAberto] = useState(false);
   const [itemNovo, setItemNovo] = useState(false);
   const [descricaoNovoItem, setDescricaoNovoItem] = useState("");
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -225,6 +227,7 @@ function VisaoSolicitante({
 
       setMensagem({ tipo: "sucesso", texto: `Solicitação ${codigo} criada com sucesso.` });
       setItemId("");
+      setItemQuery("");
       setItemNovo(false);
       setDescricaoNovoItem("");
       setCategoriaId("");
@@ -240,6 +243,10 @@ function VisaoSolicitante({
     }
   }
 
+  const itensFiltrados = itens.filter((i) =>
+    i.item.toLowerCase().includes(itemQuery.trim().toLowerCase())
+  );
+
   return (
     <div className="space-y-8">
       <section className={`${cardClass} ${formCardWidthClass}`}>
@@ -251,7 +258,7 @@ function VisaoSolicitante({
             checked={itemNovo}
             onChange={(e) => setItemNovo(e.target.checked)}
           />
-          Item novo (não está cadastrado)
+          Novo Item
         </label>
 
         {itemNovo ? (
@@ -300,19 +307,53 @@ function VisaoSolicitante({
         ) : (
           <label className="block text-sm space-y-1">
             <span>Item</span>
-            <select
-              value={itemId}
-              onChange={(e) => setItemId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Selecione...</option>
-              {itens.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.item}
-                  {i.status === "pendente_especificacao" ? " (pendente de especificação)" : ""}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                value={itemQuery}
+                onChange={(e) => {
+                  setItemQuery(e.target.value);
+                  setItemId("");
+                  setItemDropdownAberto(true);
+                }}
+                onFocus={() => setItemDropdownAberto(true)}
+                onBlur={() =>
+                  setTimeout(() => {
+                    setItemDropdownAberto(false);
+                    setItemQuery((atual) => {
+                      const selecionado = itens.find((i) => i.id === itemId);
+                      return selecionado ? selecionado.item : atual.trim() ? "" : atual;
+                    });
+                  }, 150)
+                }
+                placeholder="Digite para buscar..."
+                className={inputClass}
+              />
+              {itemDropdownAberto && (
+                <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-hairline bg-white shadow-sm dark:bg-surface-muted">
+                  {itensFiltrados.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-muted">Nenhum item encontrado.</li>
+                  ) : (
+                    itensFiltrados.map((i) => (
+                      <li key={i.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setItemId(i.id);
+                            setItemQuery(i.item);
+                            setItemDropdownAberto(false);
+                          }}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                        >
+                          {i.item}
+                          {i.status === "pendente_especificacao" ? " (pendente de especificação)" : ""}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
           </label>
         )}
 
