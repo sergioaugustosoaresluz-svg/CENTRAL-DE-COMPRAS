@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao } from "@/lib/supabase/types";
+import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao, Unidade } from "@/lib/supabase/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer, formCardWidthClass } from "@/components/PageContainer";
@@ -91,6 +91,7 @@ interface SolicitacaoComItem {
   status: SolicitacaoStatus;
   created_at: string;
   itens: { item: string } | null;
+  unidades: { nome: string } | null;
 }
 
 function VisaoSolicitante({
@@ -108,6 +109,8 @@ function VisaoSolicitante({
   const [categoriaId, setCategoriaId] = useState("");
   const [camposCategoria, setCamposCategoria] = useState<CategoriaCampoEspecificacao[]>([]);
   const [especificacoes, setEspecificacoes] = useState<Record<string, string>>({});
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadeId, setUnidadeId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [minhasSolicitacoes, setMinhasSolicitacoes] = useState<
@@ -136,6 +139,12 @@ function VisaoSolicitante({
       .eq("ativo", true)
       .order("nome")
       .then(({ data }) => setCategorias(data ?? []));
+    supabase
+      .from("unidades")
+      .select("*")
+      .eq("ativo", true)
+      .order("nome")
+      .then(({ data }) => setUnidades((data as Unidade[]) ?? []));
     carregarMinhasSolicitacoes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -157,7 +166,7 @@ function VisaoSolicitante({
   async function carregarMinhasSolicitacoes() {
     const { data } = await supabase
       .from("solicitacoes")
-      .select("id, codigo, quantidade, status, created_at, itens(item)")
+      .select("id, codigo, quantidade, status, created_at, itens(item), unidades(nome)")
       .eq("solicitante_id", solicitanteId)
       .order("created_at", { ascending: false });
     setMinhasSolicitacoes((data as unknown as SolicitacaoComItem[]) ?? []);
@@ -165,6 +174,7 @@ function VisaoSolicitante({
 
   async function enviarSolicitacao() {
     if (!quantidade) return;
+    if (!unidadeId) return;
     if (!itemNovo && !itemId) return;
     if (itemNovo && !descricaoNovoItem.trim()) return;
     if (itemNovo && !categoriaId) return;
@@ -206,6 +216,7 @@ function VisaoSolicitante({
         codigo,
         solicitante_id: solicitanteId,
         item_id: finalItemId,
+        unidade_id: unidadeId,
         quantidade: Number(quantidade),
         observacoes: observacoes.trim() || null,
         status: statusInicial,
@@ -218,6 +229,7 @@ function VisaoSolicitante({
       setDescricaoNovoItem("");
       setCategoriaId("");
       setEspecificacoes({});
+      setUnidadeId("");
       setQuantidade("");
       setObservacoes("");
       carregarMinhasSolicitacoes();
@@ -305,6 +317,24 @@ function VisaoSolicitante({
         )}
 
         <label className="block text-sm space-y-1">
+          <span>
+            Unidade<span className="text-red-600 dark:text-red-400"> *</span>
+          </span>
+          <select
+            value={unidadeId}
+            onChange={(e) => setUnidadeId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Selecione...</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm space-y-1">
           <span>Quantidade</span>
           <input
             type="number"
@@ -341,6 +371,7 @@ function VisaoSolicitante({
               <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
+                <th>Unidade</th>
                 <th>Quantidade</th>
                 <th>Status</th>
                 <th>Data</th>
@@ -354,6 +385,7 @@ function VisaoSolicitante({
                 >
                   <td className="py-2">{s.codigo}</td>
                   <td>{s.itens?.item}</td>
+                  <td>{s.unidades?.nome ?? "-"}</td>
                   <td>{s.quantidade}</td>
                   <td>
                     <StatusBadge status={s.status} />
@@ -374,6 +406,7 @@ interface SolicitacaoLigada {
   codigo: string;
   quantidade: number;
   solicitantes: { nome_completo: string } | null;
+  unidades: { nome: string } | null;
 }
 
 interface ItemPendente extends Item {
@@ -418,7 +451,7 @@ function VisaoComprador({
   async function carregarPendentes() {
     const { data } = await supabase
       .from("itens")
-      .select("*, solicitacoes(id, codigo, quantidade, solicitantes(nome_completo))")
+      .select("*, solicitacoes(id, codigo, quantidade, solicitantes(nome_completo), unidades(nome))")
       .eq("status", "pendente_especificacao")
       .order("created_at");
     setPendentes((data as unknown as ItemPendente[]) ?? []);
@@ -640,6 +673,7 @@ function VisaoComprador({
                 </th>
                 <th>Item</th>
                 <th>Solicitante</th>
+                <th>Unidade</th>
                 <th>Quantidade</th>
                 <th>Data</th>
                 <th></th>
@@ -658,6 +692,7 @@ function VisaoComprador({
                   </td>
                   <td>{p.item}</td>
                   <td>{solicitacaoLigada(p)?.solicitantes?.nome_completo ?? "-"}</td>
+                  <td>{solicitacaoLigada(p)?.unidades?.nome ?? "-"}</td>
                   <td>{solicitacaoLigada(p)?.quantidade ?? "-"}</td>
                   <td>{new Date(p.created_at).toLocaleDateString("pt-BR")}</td>
                   <td>
@@ -684,6 +719,9 @@ function VisaoComprador({
           <h2 className="font-medium">
             Complementar especificação — {selecionado.item}
           </h2>
+          <p className="text-sm text-muted">
+            Unidade: {solicitacaoLigada(selecionado)?.unidades?.nome ?? "-"}
+          </p>
 
           {selecionado.especificacoes && Object.keys(selecionado.especificacoes).length > 0 && (
             <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">

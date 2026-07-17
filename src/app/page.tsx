@@ -13,6 +13,7 @@ interface SolicitacaoFarolRow {
   created_at: string;
   updated_at: string;
   itens: { item: string } | null;
+  unidades: { nome: string } | null;
 }
 
 interface CompraFarolRow {
@@ -25,6 +26,7 @@ interface ItemFarol {
   id: string;
   codigo: string;
   itemNome: string;
+  unidadeNome?: string | null;
   dataReferencia: string;
   modo?: "comprador" | "aprovador";
 }
@@ -37,6 +39,7 @@ function mapSolicitacaoRows(
     id: r.id,
     codigo: r.codigo,
     itemNome: r.itens?.item ?? "-",
+    unidadeNome: r.unidades?.nome ?? null,
     dataReferencia: r.updated_at,
     modo,
   }));
@@ -104,8 +107,13 @@ function CardFarol({
                 <span className="truncate">
                   {i.codigo} — {i.itemNome}
                 </span>
-                <span className="whitespace-nowrap text-xs text-muted">
-                  {diasDesde(i.dataReferencia) === 0 ? "hoje" : `há ${diasDesde(i.dataReferencia)}d`}
+                <span className="flex shrink-0 items-center gap-2">
+                  {i.unidadeNome && (
+                    <span className="whitespace-nowrap text-xs text-muted">{i.unidadeNome}</span>
+                  )}
+                  <span className="whitespace-nowrap text-xs text-muted">
+                    {diasDesde(i.dataReferencia) === 0 ? "hoje" : `há ${diasDesde(i.dataReferencia)}d`}
+                  </span>
                 </span>
               </Link>
             </li>
@@ -136,7 +144,7 @@ export default function Home() {
     if (isComprador || isAdmin) {
       const { data } = await supabase
         .from("solicitacoes")
-        .select("id, codigo, created_at, updated_at, itens(item)")
+        .select("id, codigo, created_at, updated_at, itens(item), unidades(nome)")
         .eq("status", "aguardando_especificacao")
         .order("created_at", { ascending: true });
       setSolModo("comprador");
@@ -146,7 +154,7 @@ export default function Home() {
     if (isSolicitante && solicitanteId) {
       const { data } = await supabase
         .from("solicitacoes")
-        .select("id, codigo, created_at, updated_at, itens(item)")
+        .select("id, codigo, created_at, updated_at, itens(item), unidades(nome)")
         .eq("solicitante_id", solicitanteId)
         .not("status", "in", "(concluida,rejeitada)")
         .order("created_at", { ascending: true });

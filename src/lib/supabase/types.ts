@@ -76,6 +76,7 @@ export interface Solicitacao {
   codigo: string;
   solicitante_id: string;
   item_id: string;
+  unidade_id: string | null;
   comprador_id: string | null;
   quantidade: number;
   status: SolicitacaoStatus;

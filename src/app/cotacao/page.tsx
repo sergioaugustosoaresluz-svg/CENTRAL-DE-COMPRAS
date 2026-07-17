@@ -98,6 +98,7 @@ interface SolicitacaoResumo {
   comprador_id: string | null;
   itens: { item: string } | null;
   solicitantes: { nome_completo: string } | null;
+  unidades: { nome: string } | null;
 }
 
 function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
@@ -132,7 +133,9 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   async function carregarLista() {
     const { data } = await supabase
       .from("solicitacoes")
-      .select("id, codigo, quantidade, status, comprador_id, itens(item), solicitantes(nome_completo)")
+      .select(
+        "id, codigo, quantidade, status, comprador_id, itens(item), solicitantes(nome_completo), unidades(nome)"
+      )
       .in("status", ["aguardando_cotacao", "em_cotacao"])
       .order("created_at");
     const rows = (data as unknown as SolicitacaoResumo[]) ?? [];
@@ -253,6 +256,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
               <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
+                <th>Unidade</th>
                 <th>Quantidade</th>
                 <th>Solicitante</th>
                 <th>Cotações</th>
@@ -264,6 +268,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                 <tr key={s.id} className={tbodyRowClass}>
                   <td className="py-2">{s.codigo}</td>
                   <td>{s.itens?.item}</td>
+                  <td>{s.unidades?.nome ?? "-"}</td>
                   <td>{s.quantidade}</td>
                   <td>{s.solicitantes?.nome_completo}</td>
                   <td>{contagens[s.id] ?? 0} de 3</td>
@@ -284,6 +289,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
           <h2 className="font-medium">
             {selecionada.codigo} — {selecionada.itens?.item}
           </h2>
+          <p className="text-sm text-muted">Unidade: {selecionada.unidades?.nome ?? "-"}</p>
           <p className="text-sm">{contagemSelecionada} de 3 cotações registradas</p>
 
           {cotacoesDaSolicitacao.length > 0 && (
@@ -399,6 +405,7 @@ interface SolicitacaoAprovacao {
   comprador_id: string | null;
   itens: { item: string } | null;
   solicitantes: { nome_completo: string } | null;
+  unidades: { nome: string } | null;
 }
 
 function VisaoAprovador({
@@ -433,7 +440,9 @@ function VisaoAprovador({
   async function carregarLista() {
     const { data } = await supabase
       .from("solicitacoes")
-      .select("id, codigo, quantidade, comprador_id, itens(item), solicitantes(nome_completo)")
+      .select(
+        "id, codigo, quantidade, comprador_id, itens(item), solicitantes(nome_completo), unidades(nome)"
+      )
       .eq("status", "aguardando_aprovacao")
       .order("created_at");
     const rows = (data as unknown as SolicitacaoAprovacao[]) ?? [];
@@ -549,6 +558,7 @@ function VisaoAprovador({
               <tr className={theadRowClass}>
                 <th className="py-2">Código</th>
                 <th>Item</th>
+                <th>Unidade</th>
                 <th>Quantidade</th>
                 <th>Solicitante</th>
                 <th>Fornecedor vencedor</th>
@@ -564,6 +574,7 @@ function VisaoAprovador({
                   <tr key={s.id} className={tbodyRowClass}>
                     <td className="py-2">{s.codigo}</td>
                     <td>{s.itens?.item}</td>
+                    <td>{s.unidades?.nome ?? "-"}</td>
                     <td>{s.quantidade}</td>
                     <td>{s.solicitantes?.nome_completo}</td>
                     <td>{m ? nomeFornecedor(m.fornecedor_id) : "-"}</td>
@@ -587,6 +598,7 @@ function VisaoAprovador({
           <h2 className="font-medium">
             {selecionada.codigo} — {selecionada.itens?.item}
           </h2>
+          <p className="text-sm text-muted">Unidade: {selecionada.unidades?.nome ?? "-"}</p>
 
           <table className={tableClass}>
             <thead>

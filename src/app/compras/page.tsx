@@ -42,7 +42,7 @@ interface CompraLista {
   data_recebimento: string | null;
   nota_fiscal: string | null;
   situacao: SituacaoCompra;
-  solicitacoes: { codigo: string; itens: { item: string } | null } | null;
+  solicitacoes: { codigo: string; itens: { item: string } | null; unidades: { nome: string } | null } | null;
   cotacoes: { fornecedores: { fornecedor: string } | null } | null;
 }
 
@@ -85,7 +85,7 @@ function ComprasPageConteudo() {
     const { data } = await supabase
       .from("compras")
       .select(
-        "id, numero_pedido, preco_final, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, itens(item)), cotacoes(fornecedores(fornecedor))"
+        "id, numero_pedido, preco_final, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
       )
       .order("numero_pedido", { ascending: false });
     setLista((data as unknown as CompraLista[]) ?? []);
@@ -180,6 +180,7 @@ function ComprasPageConteudo() {
                 <tr className={theadRowClass}>
                   <th>Nº Pedido</th>
                   <th>Solicitação</th>
+                  <th>Unidade</th>
                   <th>Item</th>
                   <th>Fornecedor</th>
                   <th>Preço final</th>
@@ -192,6 +193,7 @@ function ComprasPageConteudo() {
                   <tr key={c.id} className={tbodyRowClass}>
                     <td className="py-2">{c.numero_pedido}</td>
                     <td>{c.solicitacoes?.codigo}</td>
+                    <td>{c.solicitacoes?.unidades?.nome ?? "-"}</td>
                     <td>{c.solicitacoes?.itens?.item}</td>
                     <td>{c.cotacoes?.fornecedores?.fornecedor}</td>
                     <td>{c.preco_final}</td>
@@ -215,6 +217,9 @@ function ComprasPageConteudo() {
                 Pedido nº {selecionada.numero_pedido} — {selecionada.solicitacoes?.codigo} —{" "}
                 {selecionada.solicitacoes?.itens?.item}
               </h2>
+              <p className="text-sm text-muted">
+                Unidade: {selecionada.solicitacoes?.unidades?.nome ?? "-"}
+              </p>
               <p className="text-sm">
                 Fornecedor: {selecionada.cotacoes?.fornecedores?.fornecedor} · Preço final:{" "}
                 {selecionada.preco_final}
