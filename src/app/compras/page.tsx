@@ -15,6 +15,7 @@ import {
   theadRowClass,
   tbodyRowClass,
   formatarDataBR,
+  formatarMoeda,
 } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
@@ -213,7 +214,7 @@ function ComprasPageConteudo() {
                     <td>{c.solicitacoes?.unidades?.nome ?? "-"}</td>
                     <td>{c.solicitacoes?.itens?.item}</td>
                     <td>{c.cotacoes?.fornecedores?.fornecedor}</td>
-                    <td>{c.preco_final}</td>
+                    <td>{formatarMoeda(c.preco_final)}</td>
                     <td>
                       {c.solicitacoes?.data_aprovacao
                         ? new Date(c.solicitacoes.data_aprovacao).toLocaleDateString("pt-BR")
@@ -245,10 +246,10 @@ function ComprasPageConteudo() {
               </p>
               <p className="text-sm">
                 Fornecedor: {selecionada.cotacoes?.fornecedores?.fornecedor} · Preço final:{" "}
-                {selecionada.preco_final}
+                {formatarMoeda(selecionada.preco_final)}
               </p>
               <p className="text-sm">
-                Valor orçado (preço da cotação vencedora): {selecionada.valor_orcado ?? "-"}
+                Valor orçado (preço da cotação vencedora): {formatarMoeda(selecionada.valor_orcado)}
               </p>
               <p className="text-sm">
                 Data de aprovação:{" "}
@@ -320,10 +321,10 @@ function ComprasPageConteudo() {
                 <div className="space-y-1">
                   {selecionada.situacao === "recebido" && (
                     <>
-                      <p className="text-sm">Valor pago: {selecionada.valor_pago}</p>
+                      <p className="text-sm">Valor pago: {formatarMoeda(selecionada.valor_pago)}</p>
                       {selecionada.valor_contraproposta != null && (
                         <p className="text-sm">
-                          Valor de contraproposta (renegociado): {selecionada.valor_contraproposta}
+                          Valor de contraproposta (renegociado): {formatarMoeda(selecionada.valor_contraproposta)}
                         </p>
                       )}
                       <p className="text-sm">Nota fiscal: {selecionada.nota_fiscal ?? "-"}</p>
