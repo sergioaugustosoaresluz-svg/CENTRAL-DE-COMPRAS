@@ -182,7 +182,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
       (cts ?? []).forEach((c) => {
         counts[c.solicitacao_id] = (counts[c.solicitacao_id] ?? 0) + 1;
       });
-      setContagens(counts);
+      setContagens((prev) => ({ ...prev, ...counts }));
     }
   }
 
@@ -466,9 +466,14 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
               </button>
             </div>
           ) : (
-            <button className={buttonClass} disabled>
-              Enviada para aprovação
-            </button>
+            <div className="flex gap-2">
+              <button className={buttonClass} disabled>
+                Enviada para aprovação
+              </button>
+              <button onClick={() => setSelecionada(null)} className={secondaryButtonClass}>
+                Fechar
+              </button>
+            </div>
           )}
 
           <MensagemInline mensagem={mensagem} />
@@ -502,6 +507,8 @@ function VisaoAprovador({
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([]);
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [melhorSelecionada, setMelhorSelecionada] = useState<CotacaoMelhorOpcao | null>(null);
+  const [valorPago, setValorPago] = useState<number | null>(null);
+  const [valorContraproposta, setValorContraproposta] = useState<number | null>(null);
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
@@ -548,6 +555,8 @@ function VisaoAprovador({
     setMensagem(null);
     setVencedoraId(null);
     setMelhorSelecionada(null);
+    setValorPago(null);
+    setValorContraproposta(null);
     setCarregandoDetalhe(true);
     try {
       const [{ data: cotacoesData }, { data: melhorData, error: melhorErro }] = await Promise.all([
@@ -569,6 +578,7 @@ function VisaoAprovador({
       const melhor = melhorData as CotacaoMelhorOpcao;
       setMelhorSelecionada(melhor);
       setVencedoraId(melhor.cotacao_vencedora_id);
+      setValorPago(melhor.preco);
     } finally {
       setCarregandoDetalhe(false);
     }
@@ -593,6 +603,10 @@ function VisaoAprovador({
       });
       return;
     }
+    if (valorPago == null) {
+      setMensagem({ tipo: "erro", texto: "Informe o valor pago." });
+      return;
+    }
 
     setProcessando(true);
     setMensagem(null);
@@ -603,6 +617,8 @@ function VisaoAprovador({
         comprador_id: selecionada.comprador_id,
         aprovador_id: aprovadorId,
         preco_final: melhorSelecionada.preco,
+        valor_pago: valorPago,
+        valor_contraproposta: valorContraproposta,
       });
       if (erroCompra) throw erroCompra;
 
@@ -737,10 +753,25 @@ function VisaoAprovador({
             </tbody>
           </table>
 
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block text-sm space-y-1">
+              <span>Valor pago</span>
+              <CampoMoeda value={valorPago} onChange={setValorPago} disabled={carregandoDetalhe} />
+            </label>
+            <label className="block text-sm space-y-1">
+              <span>Valor de contraproposta (opcional)</span>
+              <CampoMoeda value={valorContraproposta} onChange={setValorContraproposta} disabled={carregandoDetalhe} />
+              <span className="block text-xs text-zinc-500">
+                Preencha somente se houve renegociação e o valor final ficou diferente do preço da
+                cotação vencedora. Não é obrigatório.
+              </span>
+            </label>
+          </div>
+
           <div className="flex gap-2">
             <button
               onClick={aprovar}
-              disabled={processando || carregandoDetalhe || !vencedoraId}
+              disabled={processando || carregandoDetalhe || !vencedoraId || valorPago == null}
               className={buttonClass}
             >
               {carregandoDetalhe ? "Carregando..." : processando ? "Aprovando..." : "Aprovar"}

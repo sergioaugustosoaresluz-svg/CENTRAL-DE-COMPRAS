@@ -16,7 +16,6 @@ import {
   tbodyRowClass,
   formatarDataBR,
   formatarMoeda,
-  CampoMoeda,
 } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
@@ -84,8 +83,6 @@ function ComprasPageConteudo() {
   const { loading, isComprador, isAprovador, isAdmin } = useAuth();
   const [lista, setLista] = useState<CompraLista[]>([]);
   const [selecionada, setSelecionada] = useState<CompraLista | null>(null);
-  const [valorPago, setValorPago] = useState<number | null>(null);
-  const [valorContraproposta, setValorContraproposta] = useState<number | null>(null);
   const [notaFiscal, setNotaFiscal] = useState("");
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [processando, setProcessando] = useState(false);
@@ -111,8 +108,6 @@ function ComprasPageConteudo() {
   function selecionar(c: CompraLista) {
     setSelecionada(c);
     setMensagem(null);
-    setValorPago(c.valor_pago != null ? c.valor_pago : c.preco_final);
-    setValorContraproposta(c.valor_contraproposta);
     setNotaFiscal(c.nota_fiscal ?? "");
     setDataRecebimento(new Date().toISOString().slice(0, 10));
   }
@@ -129,10 +124,6 @@ function ComprasPageConteudo() {
 
   async function registrarRecebimento() {
     if (!selecionada) return;
-    if (valorPago == null) {
-      setMensagem({ tipo: "erro", texto: "Informe o valor pago." });
-      return;
-    }
     setProcessando(true);
     setMensagem(null);
     try {
@@ -140,8 +131,6 @@ function ComprasPageConteudo() {
         .from("compras")
         .update({
           situacao: "recebido",
-          valor_pago: valorPago,
-          valor_contraproposta: valorContraproposta,
           nota_fiscal: notaFiscal.trim() || null,
           data_recebimento: dataRecebimento,
         })
@@ -252,6 +241,12 @@ function ComprasPageConteudo() {
               <p className="text-sm">
                 Valor orçado (preço da cotação vencedora): {formatarMoeda(selecionada.valor_orcado)}
               </p>
+              <p className="text-sm">Valor pago: {formatarMoeda(selecionada.valor_pago)}</p>
+              {selecionada.valor_contraproposta != null && (
+                <p className="text-sm">
+                  Valor de contraproposta: {formatarMoeda(selecionada.valor_contraproposta)}
+                </p>
+              )}
               <p className="text-sm">
                 Data de aprovação:{" "}
                 {selecionada.solicitacoes?.data_aprovacao
@@ -267,18 +262,6 @@ function ComprasPageConteudo() {
               {selecionada.situacao === "aguardando_entrega" ? (
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium">Registrar recebimento</h3>
-                  <label className="block text-sm space-y-1">
-                    <span>Valor pago</span>
-                    <CampoMoeda value={valorPago} onChange={setValorPago} />
-                  </label>
-                  <label className="block text-sm space-y-1">
-                    <span>Valor de contraproposta (opcional)</span>
-                    <CampoMoeda value={valorContraproposta} onChange={setValorContraproposta} />
-                    <span className="block text-xs text-zinc-500">
-                      Preencha somente se houve renegociação e o valor final ficou diferente do
-                      preço da cotação vencedora. Não é obrigatório.
-                    </span>
-                  </label>
                   <label className="block text-sm space-y-1">
                     <span>Nota fiscal</span>
                     <input
@@ -312,12 +295,6 @@ function ComprasPageConteudo() {
                 <div className="space-y-1">
                   {selecionada.situacao === "recebido" && (
                     <>
-                      <p className="text-sm">Valor pago: {formatarMoeda(selecionada.valor_pago)}</p>
-                      {selecionada.valor_contraproposta != null && (
-                        <p className="text-sm">
-                          Valor de contraproposta (renegociado): {formatarMoeda(selecionada.valor_contraproposta)}
-                        </p>
-                      )}
                       <p className="text-sm">Nota fiscal: {selecionada.nota_fiscal ?? "-"}</p>
                       <p className="text-sm">
                         Recebido em:{" "}
