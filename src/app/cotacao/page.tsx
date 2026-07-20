@@ -113,6 +113,7 @@ interface SolicitacaoResumo {
   quantidade: number;
   status: "aguardando_cotacao" | "em_cotacao" | "aguardando_aprovacao";
   comprador_id: string | null;
+  observacoes: string | null;
   itens: {
     item: string;
     categoria_id: string | null;
@@ -166,7 +167,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     const { data } = await supabase
       .from("solicitacoes")
       .select(
-        "id, codigo, quantidade, status, comprador_id, itens(item, categoria_id, especificacoes, marca, modelo, dimensoes, unidade_medida, custo_ideal), solicitantes(nome_completo), unidades(nome)"
+        "id, codigo, quantidade, status, comprador_id, observacoes, itens(item, categoria_id, especificacoes, marca, modelo, dimensoes, unidade_medida, custo_ideal), solicitantes(nome_completo), unidades(nome)"
       )
       .in("status", ["aguardando_cotacao", "em_cotacao"])
       .order("created_at");
@@ -346,17 +347,24 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
           </h2>
           <p className="text-sm text-muted">Unidade: {selecionada.unidades?.nome ?? "-"}</p>
 
-          {selecionada.itens?.especificacoes && Object.keys(selecionada.itens.especificacoes).length > 0 && (
+          {((selecionada.itens?.especificacoes && Object.keys(selecionada.itens.especificacoes).length > 0) ||
+            selecionada.observacoes) && (
             <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">
               <p className="font-medium">Especificações informadas pelo solicitante</p>
-              {Object.entries(selecionada.itens.especificacoes).map(([chave, valor]) => (
-                <p key={chave}>
-                  <span className="text-muted">
-                    {camposCategoria.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
-                  </span>{" "}
-                  {valor}
+              {selecionada.itens?.especificacoes &&
+                Object.entries(selecionada.itens.especificacoes).map(([chave, valor]) => (
+                  <p key={chave}>
+                    <span className="text-muted">
+                      {camposCategoria.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
+                    </span>{" "}
+                    {valor}
+                  </p>
+                ))}
+              {selecionada.observacoes && (
+                <p>
+                  <span className="text-muted">Observações:</span> {selecionada.observacoes}
                 </p>
-              ))}
+              )}
             </div>
           )}
 

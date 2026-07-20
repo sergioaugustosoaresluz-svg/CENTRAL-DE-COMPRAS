@@ -446,6 +446,7 @@ interface SolicitacaoLigada {
   id: string;
   codigo: string;
   quantidade: number;
+  observacoes: string | null;
   solicitantes: { nome_completo: string } | null;
   unidades: { nome: string } | null;
 }
@@ -492,7 +493,7 @@ function VisaoComprador({
   async function carregarPendentes() {
     const { data } = await supabase
       .from("itens")
-      .select("*, solicitacoes(id, codigo, quantidade, solicitantes(nome_completo), unidades(nome))")
+      .select("*, solicitacoes(id, codigo, quantidade, observacoes, solicitantes(nome_completo), unidades(nome))")
       .eq("status", "pendente_especificacao")
       .order("created_at");
     setPendentes((data as unknown as ItemPendente[]) ?? []);
@@ -764,17 +765,24 @@ function VisaoComprador({
             Unidade: {solicitacaoLigada(selecionado)?.unidades?.nome ?? "-"}
           </p>
 
-          {selecionado.especificacoes && Object.keys(selecionado.especificacoes).length > 0 && (
+          {((selecionado.especificacoes && Object.keys(selecionado.especificacoes).length > 0) ||
+            solicitacaoLigada(selecionado)?.observacoes) && (
             <div className="rounded-md border border-hairline bg-surface-muted p-3 text-sm space-y-1">
               <p className="font-medium">Especificações informadas pelo solicitante</p>
-              {Object.entries(selecionado.especificacoes).map(([chave, valor]) => (
-                <p key={chave}>
-                  <span className="text-muted">
-                    {camposDaCategoriaSelecionada.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
-                  </span>{" "}
-                  {valor}
+              {selecionado.especificacoes &&
+                Object.entries(selecionado.especificacoes).map(([chave, valor]) => (
+                  <p key={chave}>
+                    <span className="text-muted">
+                      {camposDaCategoriaSelecionada.find((c) => c.campo_chave === chave)?.campo_label ?? chave}:
+                    </span>{" "}
+                    {valor}
+                  </p>
+                ))}
+              {solicitacaoLigada(selecionado)?.observacoes && (
+                <p>
+                  <span className="text-muted">Observações:</span> {solicitacaoLigada(selecionado)?.observacoes}
                 </p>
-              ))}
+              )}
             </div>
           )}
 
