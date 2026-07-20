@@ -150,6 +150,8 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     prazo_entrega_dias: "",
     prazo_pagamento_dias: "",
   });
+  const [fornecedorQuery, setFornecedorQuery] = useState("");
+  const [fornecedorDropdownAberto, setFornecedorDropdownAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
@@ -193,6 +195,8 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     setVencedoraId(null);
     setClassificacao(null);
     setForm({ fornecedor_id: "", preco: null, prazo_entrega_dias: "", prazo_pagamento_dias: "" });
+    setFornecedorQuery("");
+    setFornecedorDropdownAberto(false);
     if (row.itens?.categoria_id) {
       const { data } = await supabase
         .from("categoria_campos_especificacao")
@@ -275,6 +279,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
       }
 
       setForm({ fornecedor_id: "", preco: null, prazo_entrega_dias: "", prazo_pagamento_dias: "" });
+      setFornecedorQuery("");
       await carregarCotacoesDaSolicitacao(selecionada.id);
       await carregarLista();
       setMensagem({ tipo: "sucesso", texto: "Cotação registrada." });
@@ -299,6 +304,10 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
         },
       ].filter((c): c is { label: string; valor: string } => !!c.valor)
     : [];
+
+  const fornecedoresFiltrados = fornecedores.filter((f) =>
+    f.fornecedor.toLowerCase().includes(fornecedorQuery.trim().toLowerCase())
+  );
 
   return (
     <div className="space-y-8">
@@ -387,9 +396,9 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                 <tr className={theadRowClass}>
                   <th className="py-2">Fornecedor</th>
                   <th>Preço</th>
+                  <th>Valor presente</th>
                   <th>Prazo entrega</th>
                   <th>Prazo pagamento</th>
-                  <th>Valor presente</th>
                   <th>Data</th>
                 </tr>
               </thead>
@@ -408,9 +417,9 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                       {c.id === vencedoraId ? " ★ vencedora" : ""}
                     </td>
                     <td>{formatarMoeda(c.preco)}</td>
+                    <td>{formatarMoeda(c.valor_presente)}</td>
                     <td>{c.prazo_entrega_dias ?? "-"} dias</td>
                     <td>{c.prazo_pagamento_dias} dias</td>
-                    <td>{formatarMoeda(c.valor_presente)}</td>
                     <td>{formatarDataBR(c.data_cotacao)}</td>
                   </tr>
                 ))}
@@ -434,18 +443,52 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
               <h3 className="text-sm font-medium">Adicionar cotação</h3>
               <label className="block text-sm space-y-1">
                 <span>Fornecedor</span>
-                <select
-                  value={form.fornecedor_id}
-                  onChange={(e) => setForm({ ...form, fornecedor_id: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="">Selecione...</option>
-                  {fornecedores.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.fornecedor}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    value={fornecedorQuery}
+                    onChange={(e) => {
+                      setFornecedorQuery(e.target.value);
+                      setForm({ ...form, fornecedor_id: "" });
+                      setFornecedorDropdownAberto(true);
+                    }}
+                    onFocus={() => setFornecedorDropdownAberto(true)}
+                    onBlur={() =>
+                      setTimeout(() => {
+                        setFornecedorDropdownAberto(false);
+                        setFornecedorQuery((atual) => {
+                          const selecionado = fornecedores.find((f) => f.id === form.fornecedor_id);
+                          return selecionado ? selecionado.fornecedor : atual.trim() ? "" : atual;
+                        });
+                      }, 150)
+                    }
+                    placeholder="Digite para buscar..."
+                    className={inputClass}
+                  />
+                  {fornecedorDropdownAberto && (
+                    <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-hairline bg-white shadow-sm dark:bg-surface-muted">
+                      {fornecedoresFiltrados.length === 0 ? (
+                        <li className="px-3 py-2 text-sm text-muted">Nenhum fornecedor encontrado.</li>
+                      ) : (
+                        fornecedoresFiltrados.map((f) => (
+                          <li key={f.id}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setForm({ ...form, fornecedor_id: f.id });
+                                setFornecedorQuery(f.fornecedor);
+                                setFornecedorDropdownAberto(false);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                            >
+                              {f.fornecedor}
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                </div>
               </label>
               <label className="block text-sm space-y-1">
                 <span>Preço</span>
