@@ -201,3 +201,15 @@ export interface DashboardClassificacaoPreco {
   classificacao: Classificacao;
   quantidade: number;
 }
+
+export interface VariacaoMensalItem {
+  item_id: string;
+  ano: number;
+  mes: number;
+  volume_compras: number;
+  quantidade_itens: number;
+  gasto_total: number;
+  orcado_total: number;
+  custo_unitario_pago: number;
+  custo_unitario_orcado: number;
+}
