@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase/client";
 import { cardClass } from "@/components/ui";
 import { PageContainer } from "@/components/PageContainer";
+import { APP_NAME } from "@/lib/config";
 
 interface SolicitacaoFarolRow {
   id: string;
@@ -232,7 +233,7 @@ export default function Home() {
 
   return (
     <PageContainer>
-      <h1 className="text-2xl font-semibold">Central de Compras</h1>
+      <h1 className="text-2xl font-semibold">{APP_NAME}</h1>
 
       {carregando ? (
         <p className="text-sm text-zinc-500">Carregando...</p>

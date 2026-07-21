@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavBar } from "@/components/NavBar";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { APP_NAME } from "@/lib/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Central de Compras",
+  title: APP_NAME,
   description: "Solicitação, cotação e aprovação de compras",
 };
 
