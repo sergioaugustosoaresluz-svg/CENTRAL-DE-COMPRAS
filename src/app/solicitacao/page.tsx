@@ -213,19 +213,21 @@ function VisaoSolicitante({
           item?.status === "aprovado" ? "aguardando_cotacao" : "aguardando_especificacao";
       }
 
-      const codigo = gerarCodigo("SOL");
-      const { error: erroSolicitacao } = await supabase.from("solicitacoes").insert({
-        codigo,
-        solicitante_id: solicitanteId,
-        item_id: finalItemId,
-        unidade_id: unidadeId,
-        quantidade: Number(quantidade),
-        observacoes: observacoes.trim() || null,
-        status: statusInicial,
-      });
-      if (erroSolicitacao) throw erroSolicitacao;
+      const { data: novaSolicitacao, error: erroSolicitacao } = await supabase
+        .from("solicitacoes")
+        .insert({
+          solicitante_id: solicitanteId,
+          item_id: finalItemId,
+          unidade_id: unidadeId,
+          quantidade: Number(quantidade),
+          observacoes: observacoes.trim() || null,
+          status: statusInicial,
+        })
+        .select("codigo")
+        .single();
+      if (erroSolicitacao || !novaSolicitacao) throw erroSolicitacao ?? new Error("Falha ao criar solicitação");
 
-      setMensagem({ tipo: "sucesso", texto: `Solicitação ${codigo} criada com sucesso.` });
+      setMensagem({ tipo: "sucesso", texto: `Solicitação ${novaSolicitacao.codigo} criada com sucesso.` });
       setItemId("");
       setItemQuery("");
       setItemNovo(false);
