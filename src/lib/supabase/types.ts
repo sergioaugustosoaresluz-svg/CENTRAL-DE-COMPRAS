@@ -213,3 +213,26 @@ export interface VariacaoMensalItem {
   custo_unitario_pago: number;
   custo_unitario_orcado: number;
 }
+
+export interface TipoNotificacao {
+  chave: string;
+  descricao: string;
+}
+
+export interface Notificacao {
+  id: string;
+  user_id: string;
+  tipo_chave: string;
+  titulo: string;
+  mensagem: string;
+  link: string | null;
+  lida: boolean;
+  created_at: string;
+}
+
+export interface PreferenciaNotificacao {
+  user_id: string;
+  tipo_chave: string;
+  canal_sistema: boolean;
+  canal_email: boolean;
+}

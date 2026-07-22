@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificacoesSino } from "@/components/NotificacoesSino";
 
 const LINKS = [
   { href: "/", label: "Início" },
@@ -45,6 +46,7 @@ export function NavBar() {
 
       {user && (
         <div className="flex items-center gap-4 border-l border-hairline pl-4">
+          <NotificacoesSino />
           <span className="text-sm text-muted">{user.email}</span>
           <button
             onClick={signOut}

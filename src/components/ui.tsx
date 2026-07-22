@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import type { ButtonHTMLAttributes, ChangeEvent } from "react";
 
 export const inputClass =
   "w-full rounded-md border border-hairline bg-white dark:bg-surface-muted px-3 py-2 text-sm";
@@ -88,5 +88,39 @@ export function CampoMoeda({
         className="w-full bg-transparent outline-none disabled:cursor-not-allowed"
       />
     </div>
+  );
+}
+
+export function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+  disabled,
+  ...rest
+}: {
+  checked: boolean;
+  onChange: (valor: boolean) => void;
+  label?: string;
+  disabled?: boolean;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onChange" | "disabled">) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+        checked ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-700"
+      }`}
+      {...rest}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
   );
 }
