@@ -204,7 +204,7 @@ function ComprasPageConteudo() {
                     <td>{c.solicitacoes?.unidades?.nome ?? "-"}</td>
                     <td>{c.solicitacoes?.itens?.item}</td>
                     <td>{c.cotacoes?.fornecedores?.fornecedor}</td>
-                    <td>{formatarMoeda(c.preco_final)}</td>
+                    <td>{formatarMoeda(c.valor_pago)}</td>
                     <td>
                       {c.solicitacoes?.data_aprovacao
                         ? new Date(c.solicitacoes.data_aprovacao).toLocaleDateString("pt-BR")
@@ -236,7 +236,7 @@ function ComprasPageConteudo() {
               </p>
               <p className="text-sm">
                 Fornecedor: {selecionada.cotacoes?.fornecedores?.fornecedor} · Preço final:{" "}
-                {formatarMoeda(selecionada.preco_final)}
+                {formatarMoeda(selecionada.valor_pago)}
               </p>
               <p className="text-sm">
                 Valor orçado (preço da cotação vencedora): {formatarMoeda(selecionada.valor_orcado)}
