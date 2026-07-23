@@ -15,7 +15,6 @@ import {
   dangerButtonClass,
   cardClass,
   UNIDADES,
-  gerarCodigo,
   tableClass,
   theadRowClass,
   tbodyRowClass,
@@ -476,7 +475,6 @@ function VisaoComprador({
   >([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
-    codigo: "",
     marca: "",
     modelo: "",
     dimensoes: "",
@@ -505,7 +503,6 @@ function VisaoComprador({
     setSelecionado(item);
     setMensagem(null);
     setForm({
-      codigo: item.codigo ?? item.codigo_sugerido ?? gerarCodigo("ITEM"),
       marca: item.marca ?? "",
       modelo: item.modelo ?? "",
       dimensoes: item.dimensoes ?? "",
@@ -545,7 +542,6 @@ function VisaoComprador({
       const { error: erroItem } = await supabase
         .from("itens")
         .update({
-          codigo: form.codigo,
           marca: form.marca || null,
           modelo: form.modelo || null,
           dimensoes: form.dimensoes || null,
@@ -611,10 +607,9 @@ function VisaoComprador({
     try {
       const alvos = pendentes.filter((p) => selecionados.has(p.id));
       for (const item of alvos) {
-        const codigoFinal = item.codigo ?? item.codigo_sugerido ?? null;
         const { error: erroItem } = await supabase
           .from("itens")
-          .update({ status: "aprovado", ...(codigoFinal ? { codigo: codigoFinal } : {}) })
+          .update({ status: "aprovado" })
           .eq("id", item.id);
         if (erroItem) throw erroItem;
 
@@ -788,14 +783,10 @@ function VisaoComprador({
             </div>
           )}
 
-          <label className="block text-sm space-y-1">
-            <span>Código do item</span>
-            <input
-              value={form.codigo}
-              onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-              className={inputClass}
-            />
-          </label>
+          <p className="text-sm">
+            <span className="text-muted">Código:</span>{" "}
+            {selecionado.codigo ?? "será gerado automaticamente ao aprovar"}
+          </p>
 
           <label className="block text-sm space-y-1">
             <span>Marca</span>
