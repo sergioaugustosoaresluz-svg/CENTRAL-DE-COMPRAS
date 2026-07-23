@@ -1,14 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AcaoAuditoria, LogAuditoriaDetalhado } from "@/lib/supabase/types";
 import { inputClass, secondaryButtonClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { PageContainer } from "@/components/PageContainer";
-
-const TAMANHO_PAGINA = 20;
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 const TABELA_LABEL: Record<string, string> = {
   solicitacoes: "Solicitações",
@@ -124,20 +124,48 @@ function DetalheEvento({ log }: { log: LogAuditoriaDetalhado }) {
 }
 
 export default function AuditoriaPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuditoriaPageConteudo />
+    </Suspense>
+  );
+}
+
+function AuditoriaPageConteudo() {
   const { loading, isAdmin } = useAuth();
 
-  const [lista, setLista] = useState<LogAuditoriaDetalhado[]>([]);
-  const [totalRegistros, setTotalRegistros] = useState(0);
-  const [pagina, setPagina] = useState(0);
-  const [carregando, setCarregando] = useState(false);
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
-
   const [usuarios, setUsuarios] = useState<string[]>([]);
 
   const [filtroTabela, setFiltroTabela] = useState("");
   const [filtroUsuario, setFiltroUsuario] = useState("");
   const [dataInicial, setDataInicial] = useState("");
   const [dataFinal, setDataFinal] = useState("");
+
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    resetarPagina,
+    mudarItensPorPagina,
+  } = usePaginatedQuery<LogAuditoriaDetalhado>({
+    habilitado: isAdmin,
+    ordenarPor: "created_at",
+    ascendente: false,
+    dependencias: [filtroTabela, filtroUsuario, dataInicial, dataFinal],
+    montarConsulta: () => {
+      let query = supabase.from("log_auditoria_detalhado").select("*", { count: "exact" });
+      if (filtroTabela) query = query.eq("tabela", filtroTabela);
+      if (filtroUsuario) query = query.eq("nome_usuario", filtroUsuario);
+      if (dataInicial) query = query.gte("created_at", `${dataInicial}T00:00:00`);
+      if (dataFinal) query = query.lte("created_at", `${dataFinal}T23:59:59.999`);
+      return query;
+    },
+  });
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -150,34 +178,9 @@ export default function AuditoriaPage() {
       });
   }, [isAdmin]);
 
-  async function carregar() {
-    setCarregando(true);
-    let query = supabase.from("log_auditoria_detalhado").select("*", { count: "exact" });
-
-    if (filtroTabela) query = query.eq("tabela", filtroTabela);
-    if (filtroUsuario) query = query.eq("nome_usuario", filtroUsuario);
-    if (dataInicial) query = query.gte("created_at", `${dataInicial}T00:00:00`);
-    if (dataFinal) query = query.lte("created_at", `${dataFinal}T23:59:59.999`);
-
-    const from = pagina * TAMANHO_PAGINA;
-    const { data, count } = await query
-      .order("created_at", { ascending: false })
-      .range(from, from + TAMANHO_PAGINA - 1);
-
-    setLista((data as LogAuditoriaDetalhado[]) ?? []);
-    setTotalRegistros(count ?? 0);
-    setCarregando(false);
-  }
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    Promise.resolve().then(() => carregar());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, pagina, filtroTabela, filtroUsuario, dataInicial, dataFinal]);
-
-  function aplicarFiltro(atualizar: () => void) {
+  function alterarFiltro(atualizar: () => void) {
     atualizar();
-    setPagina(0);
+    resetarPagina();
   }
 
   function limparFiltros() {
@@ -185,7 +188,7 @@ export default function AuditoriaPage() {
     setFiltroUsuario("");
     setDataInicial("");
     setDataFinal("");
-    setPagina(0);
+    resetarPagina();
   }
 
   function alternarExpandido(id: string) {
@@ -203,8 +206,6 @@ export default function AuditoriaPage() {
     );
   }
 
-  const totalPaginas = Math.max(1, Math.ceil(totalRegistros / TAMANHO_PAGINA));
-
   return (
     <PageContainer>
       <h1 className="text-2xl font-semibold">Auditoria</h1>
@@ -214,7 +215,7 @@ export default function AuditoriaPage() {
           <span>Tabela</span>
           <select
             value={filtroTabela}
-            onChange={(e) => aplicarFiltro(() => setFiltroTabela(e.target.value))}
+            onChange={(e) => alterarFiltro(() => setFiltroTabela(e.target.value))}
             className={inputClass}
           >
             <option value="">Todas</option>
@@ -230,7 +231,7 @@ export default function AuditoriaPage() {
           <span>Usuário</span>
           <select
             value={filtroUsuario}
-            onChange={(e) => aplicarFiltro(() => setFiltroUsuario(e.target.value))}
+            onChange={(e) => alterarFiltro(() => setFiltroUsuario(e.target.value))}
             className={inputClass}
           >
             <option value="">Todos</option>
@@ -247,7 +248,7 @@ export default function AuditoriaPage() {
           <input
             type="date"
             value={dataInicial}
-            onChange={(e) => aplicarFiltro(() => setDataInicial(e.target.value))}
+            onChange={(e) => alterarFiltro(() => setDataInicial(e.target.value))}
             className={inputClass}
           />
         </label>
@@ -257,7 +258,7 @@ export default function AuditoriaPage() {
           <input
             type="date"
             value={dataFinal}
-            onChange={(e) => aplicarFiltro(() => setDataFinal(e.target.value))}
+            onChange={(e) => alterarFiltro(() => setDataFinal(e.target.value))}
             className={inputClass}
           />
         </label>
@@ -313,27 +314,14 @@ export default function AuditoriaPage() {
         </table>
       )}
 
-      {totalRegistros > TAMANHO_PAGINA && (
-        <div className="flex items-center justify-between text-sm">
-          <button
-            onClick={() => setPagina((p) => Math.max(0, p - 1))}
-            disabled={pagina === 0}
-            className={secondaryButtonClass}
-          >
-            Anterior
-          </button>
-          <span className="text-muted">
-            Página {pagina + 1} de {totalPaginas} ({totalRegistros} registros)
-          </span>
-          <button
-            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
-            disabled={pagina >= totalPaginas - 1}
-            className={secondaryButtonClass}
-          >
-            Próxima
-          </button>
-        </div>
-      )}
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        total={total}
+        itensPorPagina={itensPorPagina}
+        onMudarPagina={irParaPagina}
+        onMudarItensPorPagina={mudarItensPorPagina}
+      />
     </PageContainer>
   );
 }
