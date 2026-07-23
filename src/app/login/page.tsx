@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { inputClass, buttonClass, cardClass } from "@/components/ui";
 import { PageContainer } from "@/components/PageContainer";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageConteudo />
+    </Suspense>
+  );
+}
+
+function LoginPageConteudo() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redefinida = searchParams.get("redefinida") === "1";
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [entrando, setEntrando] = useState(false);
@@ -33,6 +44,12 @@ export default function LoginPage() {
     <PageContainer variant="center">
       <form onSubmit={entrar} className={`${cardClass} w-full max-w-sm`}>
         <h1 className="text-xl font-semibold">Entrar</h1>
+
+        {redefinida && (
+          <p className="text-sm text-green-600 dark:text-green-400">
+            Senha redefinida com sucesso. Faça login com sua nova senha.
+          </p>
+        )}
 
         <label className="block text-sm space-y-1">
           <span>E-mail</span>
@@ -61,6 +78,12 @@ export default function LoginPage() {
         </button>
 
         {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
+
+        <p className="text-sm text-center">
+          <Link href="/esqueci-senha" className="text-primary hover:underline">
+            Esqueci minha senha
+          </Link>
+        </p>
       </form>
     </PageContainer>
   );
