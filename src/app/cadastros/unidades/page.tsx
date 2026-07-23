@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Unidade } from "@/lib/supabase/types";
@@ -8,6 +8,8 @@ import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardC
 import { Badge } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 interface ErroSupabase {
   code?: string;
@@ -24,8 +26,15 @@ function UnidadeStatusBadge({ ativo }: { ativo: boolean }) {
 }
 
 export default function UnidadesPage() {
+  return (
+    <Suspense fallback={null}>
+      <UnidadesPageConteudo />
+    </Suspense>
+  );
+}
+
+function UnidadesPageConteudo() {
   const { isAdmin } = useAuth();
-  const [lista, setLista] = useState<Unidade[]>([]);
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -33,19 +42,29 @@ export default function UnidadesPage() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
-  useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca]);
-
-  async function carregar() {
-    let query = supabase.from("unidades").select("*").order("nome");
-    if (busca.trim()) {
-      query = query.or(`nome.ilike.%${busca}%,codigo.ilike.%${busca}%`);
-    }
-    const { data } = await query;
-    setLista((data as Unidade[]) ?? []);
-  }
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    resetarPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<Unidade>({
+    ordenarPor: "nome",
+    ascendente: true,
+    dependencias: [busca],
+    montarConsulta: () => {
+      let query = supabase.from("unidades").select("*", { count: "exact" });
+      if (busca.trim()) {
+        query = query.or(`nome.ilike.%${busca}%,codigo.ilike.%${busca}%`);
+      }
+      return query;
+    },
+  });
 
   function abrirNovo() {
     setEditandoId(null);
@@ -86,7 +105,7 @@ export default function UnidadesPage() {
       tipo: "sucesso",
       texto: `Unidade "${u.nome}" marcada como ${!u.ativo ? "ativa" : "inativa"}.`,
     });
-    carregar();
+    recarregar();
   }
 
   async function excluir(e: React.MouseEvent, u: Unidade) {
@@ -99,7 +118,7 @@ export default function UnidadesPage() {
       return;
     }
     setMensagem({ tipo: "sucesso", texto: `Unidade "${u.nome}" excluída com sucesso.` });
-    carregar();
+    recarregar();
   }
 
   async function salvar() {
@@ -118,7 +137,7 @@ export default function UnidadesPage() {
       if (error) throw error;
 
       setAberto(false);
-      carregar();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
@@ -139,12 +158,17 @@ export default function UnidadesPage() {
 
       <input
         value={busca}
-        onChange={(e) => setBusca(e.target.value)}
+        onChange={(e) => {
+          setBusca(e.target.value);
+          resetarPagina();
+        }}
         placeholder="Buscar por nome ou código..."
         className={inputClass}
       />
 
-      {lista.length === 0 ? (
+      {carregando ? (
+        <p className="text-sm text-zinc-500">Carregando...</p>
+      ) : lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhuma unidade encontrada.</p>
       ) : (
         <table className={tableClass}>
@@ -186,6 +210,15 @@ export default function UnidadesPage() {
           </tbody>
         </table>
       )}
+
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        total={total}
+        itensPorPagina={itensPorPagina}
+        onMudarPagina={irParaPagina}
+        onMudarItensPorPagina={mudarItensPorPagina}
+      />
 
       {aberto && (
         <section className={cardClass}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item } from "@/lib/supabase/types";
@@ -8,6 +8,8 @@ import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardC
 import { Badge } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 interface ErroSupabase {
   code?: string;
@@ -29,8 +31,15 @@ function ItemStatusBadge({ status }: { status: Item["status"] }) {
 }
 
 export default function ItensPage() {
+  return (
+    <Suspense fallback={null}>
+      <ItensPageConteudo />
+    </Suspense>
+  );
+}
+
+function ItensPageConteudo() {
   const { isAdmin } = useAuth();
-  const [lista, setLista] = useState<Item[]>([]);
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -38,19 +47,29 @@ export default function ItensPage() {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
-  useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca]);
-
-  async function carregar() {
-    let query = supabase.from("itens").select("*").order("item");
-    if (busca.trim()) {
-      query = query.or(`item.ilike.%${busca}%,codigo.ilike.%${busca}%`);
-    }
-    const { data } = await query;
-    setLista((data as Item[]) ?? []);
-  }
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    resetarPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<Item>({
+    ordenarPor: "item",
+    ascendente: true,
+    dependencias: [busca],
+    montarConsulta: () => {
+      let query = supabase.from("itens").select("*", { count: "exact" });
+      if (busca.trim()) {
+        query = query.or(`item.ilike.%${busca}%,codigo.ilike.%${busca}%`);
+      }
+      return query;
+    },
+  });
 
   function abrirNovo() {
     setEditandoId(null);
@@ -93,7 +112,7 @@ export default function ItensPage() {
       return;
     }
     setMensagem({ tipo: "sucesso", texto: `Item "${i.item}" excluído com sucesso.` });
-    carregar();
+    recarregar();
   }
 
   async function salvar() {
@@ -119,7 +138,7 @@ export default function ItensPage() {
       if (error) throw error;
 
       setAberto(false);
-      carregar();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
@@ -145,12 +164,17 @@ export default function ItensPage() {
 
       <input
         value={busca}
-        onChange={(e) => setBusca(e.target.value)}
+        onChange={(e) => {
+          setBusca(e.target.value);
+          resetarPagina();
+        }}
         placeholder="Buscar por item ou código..."
         className={inputClass}
       />
 
-      {lista.length === 0 ? (
+      {carregando ? (
+        <p className="text-sm text-zinc-500">Carregando...</p>
+      ) : lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum item encontrado.</p>
       ) : (
         <table className={tableClass}>
@@ -188,6 +212,15 @@ export default function ItensPage() {
           </tbody>
         </table>
       )}
+
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        total={total}
+        itensPorPagina={itensPorPagina}
+        onMudarPagina={irParaPagina}
+        onMudarItensPorPagina={mudarItensPorPagina}
+      />
 
       {aberto && (
         <section className={cardClass}>

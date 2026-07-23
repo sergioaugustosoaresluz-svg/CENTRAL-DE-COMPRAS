@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Pessoa } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 type TabelaPessoa = "compradores" | "solicitantes" | "aprovadores";
 
@@ -28,8 +30,15 @@ const FORM_VAZIO = {
   funcao: "",
 };
 
-export function CadastroPessoa({ tabela, titulo }: Props) {
-  const [lista, setLista] = useState<Pessoa[]>([]);
+export function CadastroPessoa(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <CadastroPessoaConteudo {...props} />
+    </Suspense>
+  );
+}
+
+function CadastroPessoaConteudo({ tabela, titulo }: Props) {
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -37,19 +46,29 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
 
-  useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca]);
-
-  async function carregar() {
-    let query = supabase.from(tabela).select("*").order("nome_completo");
-    if (busca.trim()) {
-      query = query.or(`nome_completo.ilike.%${busca}%,codigo.ilike.%${busca}%`);
-    }
-    const { data } = await query;
-    setLista((data as Pessoa[]) ?? []);
-  }
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    resetarPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<Pessoa>({
+    ordenarPor: "nome_completo",
+    ascendente: true,
+    dependencias: [tabela, busca],
+    montarConsulta: () => {
+      let query = supabase.from(tabela).select("*", { count: "exact" });
+      if (busca.trim()) {
+        query = query.or(`nome_completo.ilike.%${busca}%,codigo.ilike.%${busca}%`);
+      }
+      return query;
+    },
+  });
 
   function abrirNovo() {
     setEditandoId(null);
@@ -107,7 +126,7 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
       if (error) throw error;
 
       setAberto(false);
-      carregar();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
@@ -126,12 +145,17 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
 
       <input
         value={busca}
-        onChange={(e) => setBusca(e.target.value)}
+        onChange={(e) => {
+          setBusca(e.target.value);
+          resetarPagina();
+        }}
         placeholder="Buscar por nome ou código..."
         className={inputClass}
       />
 
-      {lista.length === 0 ? (
+      {carregando ? (
+        <p className="text-sm text-zinc-500">Carregando...</p>
+      ) : lista.length === 0 ? (
         <p className="text-sm text-zinc-500">Nenhum cadastro encontrado.</p>
       ) : (
         <table className={tableClass}>
@@ -159,6 +183,15 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
           </tbody>
         </table>
       )}
+
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        total={total}
+        itensPorPagina={itensPorPagina}
+        onMudarPagina={irParaPagina}
+        onMudarItensPorPagina={mudarItensPorPagina}
+      />
 
       {aberto && (
         <section className={cardClass}>
