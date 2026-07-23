@@ -8,19 +8,23 @@ export const ITENS_POR_PAGINA_OPCOES = [20, 50, 100] as const;
 
 // Formato minimo que qualquer query builder do Supabase satisfaz depois de
 // `.select(..., { count: "exact" })` + filtros: falta so encadear order/range.
-interface ConsultaOrdenavel<T> {
+// Nao e generico em T de proposito: o Supabase infere relacoes embutidas
+// (ex: "itens(item)") como array mesmo quando o app trata como objeto unico,
+// entao toda tela do projeto ja faz `as unknown as X[]` no retorno — o hook
+// absorve esse cast uma unica vez, em vez de forcar isso em cada tela.
+interface ConsultaOrdenavel {
   order: (
     coluna: string,
     opcoes?: { ascending?: boolean }
   ) => {
-    range: (de: number, ate: number) => PromiseLike<{ data: T[] | null; count: number | null }>;
+    range: (de: number, ate: number) => PromiseLike<{ data: unknown; count: number | null }>;
   };
 }
 
-interface UsePaginatedQueryOptions<T> {
+interface UsePaginatedQueryOptions {
   // Monta a query ja com .select(..., { count: "exact" }) e os filtros
   // aplicados, mas SEM .order()/.range() — isso quem encadeia e o hook.
-  montarConsulta: () => ConsultaOrdenavel<T>;
+  montarConsulta: () => ConsultaOrdenavel;
   ordenarPor: string;
   ascendente?: boolean;
   // false enquanto uma pre-condicao (ex: papel do usuario) nao esta pronta.
@@ -37,7 +41,7 @@ export function usePaginatedQuery<T>({
   ascendente = false,
   habilitado = true,
   dependencias = [],
-}: UsePaginatedQueryOptions<T>) {
+}: UsePaginatedQueryOptions) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,7 +82,7 @@ export function usePaginatedQuery<T>({
     const { data, count } = await montarConsulta()
       .order(ordenarPor, { ascending: ascendente })
       .range(de, ate);
-    setDados(data ?? []);
+    setDados((Array.isArray(data) ? data : []) as unknown as T[]);
     setTotal(count ?? 0);
     setCarregando(false);
     // montarConsulta fecha sobre os filtros atuais; chaveDependencias (vinda

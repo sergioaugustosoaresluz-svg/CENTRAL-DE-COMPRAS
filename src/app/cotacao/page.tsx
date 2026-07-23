@@ -26,6 +26,8 @@ import {
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
   if (!classificacao) {
@@ -130,7 +132,6 @@ interface SolicitacaoResumo {
 
 function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [lista, setLista] = useState<SolicitacaoResumo[]>([]);
   const [contagens, setContagens] = useState<Record<string, number>>({});
   const [selecionada, setSelecionada] = useState<SolicitacaoResumo | null>(null);
   const [cotacoesDaSolicitacao, setCotacoesDaSolicitacao] = useState<
@@ -156,38 +157,51 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<SolicitacaoResumo>({
+    ordenarPor: "created_at",
+    ascendente: true,
+    montarConsulta: () =>
+      supabase
+        .from("solicitacoes")
+        .select(
+          "id, codigo, quantidade, status, comprador_id, observacoes, itens(item, categoria_id, especificacoes, marca, modelo, dimensoes, unidade_medida, custo_ideal), solicitantes(nome_completo), unidades(nome)",
+          { count: "exact" }
+        )
+        .in("status", ["aguardando_cotacao", "em_cotacao"]),
+  });
+
   useEffect(() => {
     supabase
       .from("fornecedores")
       .select("*")
       .order("fornecedor")
       .then(({ data }) => setFornecedores(data ?? []));
-    carregarLista();
   }, []);
 
-  async function carregarLista() {
-    const { data } = await supabase
-      .from("solicitacoes")
-      .select(
-        "id, codigo, quantidade, status, comprador_id, observacoes, itens(item, categoria_id, especificacoes, marca, modelo, dimensoes, unidade_medida, custo_ideal), solicitantes(nome_completo), unidades(nome)"
-      )
-      .in("status", ["aguardando_cotacao", "em_cotacao"])
-      .order("created_at");
-    const rows = (data as unknown as SolicitacaoResumo[]) ?? [];
-    setLista(rows);
-
-    if (rows.length > 0) {
+  useEffect(() => {
+    if (lista.length === 0) return;
+    Promise.resolve().then(async () => {
       const { data: cts } = await supabase
         .from("cotacoes")
         .select("solicitacao_id")
-        .in("solicitacao_id", rows.map((r) => r.id));
+        .in("solicitacao_id", lista.map((r) => r.id));
       const counts: Record<string, number> = {};
       (cts ?? []).forEach((c) => {
         counts[c.solicitacao_id] = (counts[c.solicitacao_id] ?? 0) + 1;
       });
       setContagens((prev) => ({ ...prev, ...counts }));
-    }
-  }
+    });
+  }, [lista]);
 
   async function selecionar(row: SolicitacaoResumo) {
     setSelecionada(row);
@@ -281,7 +295,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
       setForm({ fornecedor_id: "", preco: null, prazo_entrega_dias: "", prazo_pagamento_dias: "" });
       setFornecedorQuery("");
       await carregarCotacoesDaSolicitacao(selecionada.id);
-      await carregarLista();
+      recarregar();
       setMensagem({ tipo: "sucesso", texto: "Cotação registrada." });
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao registrar cotação: " + (e as Error).message });
@@ -313,7 +327,9 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
     <div className="space-y-8">
       <section className="space-y-3">
         <h2 className="font-medium">Registrar Cotações</h2>
-        {lista.length === 0 ? (
+        {carregando ? (
+          <p className="text-sm text-zinc-500">Carregando...</p>
+        ) : lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando cotação.</p>
         ) : (
           <table className={tableClass}>
@@ -347,6 +363,15 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
             </tbody>
           </table>
         )}
+
+        <Pagination
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          total={total}
+          itensPorPagina={itensPorPagina}
+          onMudarPagina={irParaPagina}
+          onMudarItensPorPagina={mudarItensPorPagina}
+        />
       </section>
 
       {selecionada && (
@@ -552,7 +577,6 @@ function VisaoAprovador({
   codigoFoco: string | null;
 }) {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [lista, setLista] = useState<SolicitacaoAprovacao[]>([]);
   const [melhores, setMelhores] = useState<Record<string, CotacaoMelhorOpcao>>({});
   const [selecionada, setSelecionada] = useState<SolicitacaoAprovacao | null>(null);
   const [cotacoes, setCotacoes] = useState<Cotacao[]>([]);
@@ -565,41 +589,57 @@ function VisaoAprovador({
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<SolicitacaoAprovacao>({
+    ordenarPor: "created_at",
+    ascendente: true,
+    montarConsulta: () =>
+      supabase
+        .from("solicitacoes")
+        .select(
+          "id, codigo, quantidade, comprador_id, itens(item), solicitantes(nome_completo), unidades(nome)",
+          { count: "exact" }
+        )
+        .eq("status", "aguardando_aprovacao"),
+  });
+
   useEffect(() => {
     supabase
       .from("fornecedores")
       .select("*")
       .then(({ data }) => setFornecedores(data ?? []));
-    carregarLista();
   }, []);
 
   function nomeFornecedor(id: string) {
     return fornecedores.find((f) => f.id === id)?.fornecedor ?? "-";
   }
 
-  async function carregarLista() {
-    const { data } = await supabase
-      .from("solicitacoes")
-      .select(
-        "id, codigo, quantidade, comprador_id, itens(item), solicitantes(nome_completo), unidades(nome)"
-      )
-      .eq("status", "aguardando_aprovacao")
-      .order("created_at");
-    const rows = (data as unknown as SolicitacaoAprovacao[]) ?? [];
-    setLista(rows);
-
-    if (rows.length > 0) {
+  useEffect(() => {
+    Promise.resolve().then(async () => {
+      if (lista.length === 0) {
+        setMelhores({});
+        return;
+      }
       const { data: melhoresData } = await supabase
         .from("cotacoes_melhor_opcao")
         .select("*")
-        .in("solicitacao_id", rows.map((r) => r.id));
+        .in("solicitacao_id", lista.map((r) => r.id));
       const map: Record<string, CotacaoMelhorOpcao> = {};
       (melhoresData as CotacaoMelhorOpcao[] | null ?? []).forEach((m) => {
         map[m.solicitacao_id] = m;
       });
       setMelhores(map);
-    }
-  }
+    });
+  }, [lista]);
 
   async function selecionar(row: SolicitacaoAprovacao) {
     setSelecionada(row);
@@ -686,7 +726,7 @@ function VisaoAprovador({
 
       setMensagem({ tipo: "sucesso", texto: `Solicitação ${selecionada.codigo} aprovada e compra registrada.` });
       setSelecionada(null);
-      carregarLista();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao aprovar: " + (e as Error).message });
     } finally {
@@ -709,7 +749,7 @@ function VisaoAprovador({
       if (error) throw error;
       setMensagem({ tipo: "sucesso", texto: `Solicitação ${selecionada.codigo} rejeitada.` });
       setSelecionada(null);
-      carregarLista();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao rejeitar: " + (e as Error).message });
     } finally {
@@ -722,7 +762,9 @@ function VisaoAprovador({
       <section className="space-y-3">
         <h2 className="font-medium">Cotações Aguardando Aprovação</h2>
         {!selecionada && <MensagemInline mensagem={mensagem} />}
-        {lista.length === 0 ? (
+        {carregando ? (
+          <p className="text-sm text-zinc-500">Carregando...</p>
+        ) : lista.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação aguardando aprovação.</p>
         ) : (
           <table className={tableClass}>
@@ -763,6 +805,15 @@ function VisaoAprovador({
             </tbody>
           </table>
         )}
+
+        <Pagination
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          total={total}
+          itensPorPagina={itensPorPagina}
+          onMudarPagina={irParaPagina}
+          onMudarItensPorPagina={mudarItensPorPagina}
+        />
       </section>
 
       {selecionada && (

@@ -20,6 +20,8 @@ import {
 import { Badge, type BadgeTone } from "@/components/Badge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 
 interface ErroSupabase {
   code?: string;
@@ -80,7 +82,6 @@ function ComprasPageConteudo() {
   const searchParams = useSearchParams();
   const codigoFoco = searchParams.get("codigo");
   const { loading, isComprador, isAprovador, isAdmin } = useAuth();
-  const [lista, setLista] = useState<CompraLista[]>([]);
   const [selecionada, setSelecionada] = useState<CompraLista | null>(null);
   const [notaFiscal, setNotaFiscal] = useState("");
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
@@ -90,19 +91,28 @@ function ComprasPageConteudo() {
 
   const temAcesso = isComprador || isAprovador || isAdmin;
 
-  useEffect(() => {
-    if (temAcesso) carregar();
-  }, [temAcesso]);
-
-  async function carregar() {
-    const { data } = await supabase
-      .from("compras")
-      .select(
-        "id, numero_pedido, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
-      )
-      .order("numero_pedido", { ascending: false });
-    setLista((data as unknown as CompraLista[]) ?? []);
-  }
+  const {
+    dados: lista,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    mudarItensPorPagina,
+    recarregar,
+  } = usePaginatedQuery<CompraLista>({
+    habilitado: temAcesso,
+    ordenarPor: "numero_pedido",
+    ascendente: false,
+    montarConsulta: () =>
+      supabase
+        .from("compras")
+        .select(
+          "id, numero_pedido, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))",
+          { count: "exact" }
+        ),
+  });
 
   function selecionar(c: CompraLista) {
     setSelecionada(c);
@@ -138,7 +148,7 @@ function ComprasPageConteudo() {
 
       setMensagem({ tipo: "sucesso", texto: `Recebimento do pedido nº ${selecionada.numero_pedido} registrado com sucesso.` });
       setSelecionada(null);
-      carregar();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
@@ -157,7 +167,7 @@ function ComprasPageConteudo() {
 
       setMensagem({ tipo: "sucesso", texto: `Pedido nº ${selecionada.numero_pedido} cancelado.` });
       setSelecionada(null);
-      carregar();
+      recarregar();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: mensagemDeErro(e as ErroSupabase) });
     } finally {
@@ -177,7 +187,9 @@ function ComprasPageConteudo() {
         <>
           <MensagemInline mensagem={mensagem} />
 
-          {lista.length === 0 ? (
+          {carregando ? (
+            <p className="text-sm text-zinc-500">Carregando...</p>
+          ) : lista.length === 0 ? (
             <p className="text-sm text-zinc-500">Nenhuma compra registrada ainda.</p>
           ) : (
             <table className={tableClass}>
@@ -223,6 +235,15 @@ function ComprasPageConteudo() {
               </tbody>
             </table>
           )}
+
+          <Pagination
+            pagina={pagina}
+            totalPaginas={totalPaginas}
+            total={total}
+            itensPorPagina={itensPorPagina}
+            onMudarPagina={irParaPagina}
+            onMudarItensPorPagina={mudarItensPorPagina}
+          />
 
           {selecionada && (
             <section className={cardClass}>

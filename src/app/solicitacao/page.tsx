@@ -8,6 +8,8 @@ import type { Item, SolicitacaoStatus, Categoria, CategoriaCampoEspecificacao, U
 import { StatusBadge } from "@/components/StatusBadge";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer, formCardWidthClass } from "@/components/PageContainer";
+import { Pagination } from "@/components/Pagination";
+import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
 import {
   inputClass,
   buttonClass,
@@ -114,12 +116,31 @@ function VisaoSolicitante({
   const [unidadeId, setUnidadeId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  const [minhasSolicitacoes, setMinhasSolicitacoes] = useState<
-    SolicitacaoComItem[]
-  >([]);
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoDestacado, setCodigoDestacado] = useState<string | null>(null);
+
+  const {
+    dados: minhasSolicitacoes,
+    total: totalMinhasSolicitacoes,
+    totalPaginas: totalPaginasMinhasSolicitacoes,
+    pagina: paginaMinhasSolicitacoes,
+    itensPorPagina: itensPorPaginaMinhasSolicitacoes,
+    carregando: carregandoMinhasSolicitacoes,
+    irParaPagina: irParaPaginaMinhasSolicitacoes,
+    mudarItensPorPagina: mudarItensPorPaginaMinhasSolicitacoes,
+    recarregar: recarregarMinhasSolicitacoes,
+  } = usePaginatedQuery<SolicitacaoComItem>({
+    ordenarPor: "created_at",
+    ascendente: false,
+    montarConsulta: () =>
+      supabase
+        .from("solicitacoes")
+        .select("id, codigo, quantidade, status, created_at, itens(item), unidades(nome)", {
+          count: "exact",
+        })
+        .eq("solicitante_id", solicitanteId),
+  });
 
   useEffect(() => {
     if (!codigoFoco) return;
@@ -146,8 +167,6 @@ function VisaoSolicitante({
       .eq("ativo", true)
       .order("nome")
       .then(({ data }) => setUnidades((data as Unidade[]) ?? []));
-    carregarMinhasSolicitacoes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -163,15 +182,6 @@ function VisaoSolicitante({
       setEspecificacoes({});
     });
   }, [categoriaId]);
-
-  async function carregarMinhasSolicitacoes() {
-    const { data } = await supabase
-      .from("solicitacoes")
-      .select("id, codigo, quantidade, status, created_at, itens(item), unidades(nome)")
-      .eq("solicitante_id", solicitanteId)
-      .order("created_at", { ascending: false });
-    setMinhasSolicitacoes((data as unknown as SolicitacaoComItem[]) ?? []);
-  }
 
   async function enviarSolicitacao() {
     if (!quantidade) return;
@@ -236,7 +246,7 @@ function VisaoSolicitante({
       setUnidadeId("");
       setQuantidade("");
       setObservacoes("");
-      carregarMinhasSolicitacoes();
+      recarregarMinhasSolicitacoes();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao criar solicitação: " + (e as Error).message });
     } finally {
@@ -405,7 +415,9 @@ function VisaoSolicitante({
 
       <section className="space-y-3">
         <h2 className="font-medium">Minhas solicitações</h2>
-        {minhasSolicitacoes.length === 0 ? (
+        {carregandoMinhasSolicitacoes ? (
+          <p className="text-sm text-zinc-500">Carregando...</p>
+        ) : minhasSolicitacoes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhuma solicitação ainda.</p>
         ) : (
           <table className={tableClass}>
@@ -438,6 +450,15 @@ function VisaoSolicitante({
             </tbody>
           </table>
         )}
+
+        <Pagination
+          pagina={paginaMinhasSolicitacoes}
+          totalPaginas={totalPaginasMinhasSolicitacoes}
+          total={totalMinhasSolicitacoes}
+          itensPorPagina={itensPorPaginaMinhasSolicitacoes}
+          onMudarPagina={irParaPaginaMinhasSolicitacoes}
+          onMudarItensPorPagina={mudarItensPorPaginaMinhasSolicitacoes}
+        />
       </section>
     </div>
   );
@@ -468,7 +489,6 @@ function VisaoComprador({
   codigoFoco: string | null;
 }) {
   const { isAdmin } = useAuth();
-  const [pendentes, setPendentes] = useState<ItemPendente[]>([]);
   const [selecionado, setSelecionado] = useState<ItemPendente | null>(null);
   const [camposDaCategoriaSelecionada, setCamposDaCategoriaSelecionada] = useState<
     CategoriaCampoEspecificacao[]
@@ -486,18 +506,28 @@ function VisaoComprador({
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
 
-  useEffect(() => {
-    carregarPendentes();
-  }, []);
-
-  async function carregarPendentes() {
-    const { data } = await supabase
-      .from("itens")
-      .select("*, solicitacoes(id, codigo, quantidade, observacoes, solicitantes(nome_completo), unidades(nome))")
-      .eq("status", "pendente_especificacao")
-      .order("created_at");
-    setPendentes((data as unknown as ItemPendente[]) ?? []);
-  }
+  const {
+    dados: pendentes,
+    total: totalPendentes,
+    totalPaginas: totalPaginasPendentes,
+    pagina: paginaPendentes,
+    itensPorPagina: itensPorPaginaPendentes,
+    carregando: carregandoPendentes,
+    irParaPagina: irParaPaginaPendentes,
+    mudarItensPorPagina: mudarItensPorPaginaPendentes,
+    recarregar: recarregarPendentes,
+  } = usePaginatedQuery<ItemPendente>({
+    ordenarPor: "created_at",
+    ascendente: true,
+    montarConsulta: () =>
+      supabase
+        .from("itens")
+        .select(
+          "*, solicitacoes(id, codigo, quantidade, observacoes, solicitantes(nome_completo), unidades(nome))",
+          { count: "exact" }
+        )
+        .eq("status", "pendente_especificacao"),
+  });
 
   function selecionar(item: ItemPendente) {
     setSelecionado(item);
@@ -572,7 +602,7 @@ function VisaoComprador({
           : "Item aprovado.",
       });
       setSelecionado(null);
-      carregarPendentes();
+      recarregarPendentes();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao aprovar item: " + (e as Error).message });
     } finally {
@@ -629,7 +659,7 @@ function VisaoComprador({
 
       setMensagem({ tipo: "sucesso", texto: `${alvos.length} item(ns) aprovado(s).` });
       setSelecionados(new Set());
-      carregarPendentes();
+      recarregarPendentes();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro ao aprovar selecionados: " + (e as Error).message });
     } finally {
@@ -653,7 +683,7 @@ function VisaoComprador({
       return;
     }
     if (selecionado?.id === item.id) setSelecionado(null);
-    carregarPendentes();
+    recarregarPendentes();
   }
 
   async function solicitarMaisDetalhes() {
@@ -671,7 +701,7 @@ function VisaoComprador({
       if (error) throw error;
       setMensagem({ tipo: "sucesso", texto: "Solicitado mais detalhes ao solicitante." });
       setSelecionado(null);
-      carregarPendentes();
+      recarregarPendentes();
     } catch (e) {
       setMensagem({ tipo: "erro", texto: "Erro: " + (e as Error).message });
     } finally {
@@ -697,7 +727,9 @@ function VisaoComprador({
           )}
         </div>
         {!selecionado && <MensagemInline mensagem={mensagem} />}
-        {pendentes.length === 0 ? (
+        {carregandoPendentes ? (
+          <p className="text-sm text-zinc-500">Carregando...</p>
+        ) : pendentes.length === 0 ? (
           <p className="text-sm text-zinc-500">Nenhum item pendente de especificação.</p>
         ) : (
           <table className={tableClass}>
@@ -751,6 +783,15 @@ function VisaoComprador({
             </tbody>
           </table>
         )}
+
+        <Pagination
+          pagina={paginaPendentes}
+          totalPaginas={totalPaginasPendentes}
+          total={totalPendentes}
+          itensPorPagina={itensPorPaginaPendentes}
+          onMudarPagina={irParaPaginaPendentes}
+          onMudarItensPorPagina={mudarItensPorPaginaPendentes}
+        />
       </section>
 
       {selecionado && (
