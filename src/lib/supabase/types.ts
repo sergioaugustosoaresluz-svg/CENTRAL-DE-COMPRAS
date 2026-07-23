@@ -130,7 +130,6 @@ export interface Compra {
   cotacao_id: string;
   comprador_id: string | null;
   aprovador_id: string | null;
-  preco_final: number;
   data_compra: string;
   created_at: string;
   numero_pedido: number;

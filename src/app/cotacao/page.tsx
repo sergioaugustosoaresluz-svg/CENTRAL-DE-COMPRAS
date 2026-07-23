@@ -667,7 +667,6 @@ function VisaoAprovador({
         cotacao_id: melhorSelecionada.cotacao_vencedora_id,
         comprador_id: selecionada.comprador_id,
         aprovador_id: aprovadorId,
-        preco_final: melhorSelecionada.preco,
         valor_pago: valorPago,
         valor_contraproposta: valorContraproposta,
       });

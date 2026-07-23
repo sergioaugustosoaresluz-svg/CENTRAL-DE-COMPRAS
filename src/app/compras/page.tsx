@@ -45,7 +45,6 @@ function SituacaoBadge({ situacao }: { situacao: SituacaoCompra }) {
 interface CompraLista {
   id: string;
   numero_pedido: number;
-  preco_final: number;
   valor_orcado: number | null;
   valor_pago: number | null;
   valor_contraproposta: number | null;
@@ -99,7 +98,7 @@ function ComprasPageConteudo() {
     const { data } = await supabase
       .from("compras")
       .select(
-        "id, numero_pedido, preco_final, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
+        "id, numero_pedido, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))"
       )
       .order("numero_pedido", { ascending: false });
     setLista((data as unknown as CompraLista[]) ?? []);
