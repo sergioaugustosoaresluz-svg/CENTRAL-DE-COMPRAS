@@ -1,0 +1,114 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+export const ITENS_POR_PAGINA_PADRAO = 20;
+export const ITENS_POR_PAGINA_OPCOES = [20, 50, 100] as const;
+
+// Formato minimo que qualquer query builder do Supabase satisfaz depois de
+// `.select(..., { count: "exact" })` + filtros: falta so encadear order/range.
+interface ConsultaOrdenavel<T> {
+  order: (
+    coluna: string,
+    opcoes?: { ascending?: boolean }
+  ) => {
+    range: (de: number, ate: number) => PromiseLike<{ data: T[] | null; count: number | null }>;
+  };
+}
+
+interface UsePaginatedQueryOptions<T> {
+  // Monta a query ja com .select(..., { count: "exact" }) e os filtros
+  // aplicados, mas SEM .order()/.range() — isso quem encadeia e o hook.
+  montarConsulta: () => ConsultaOrdenavel<T>;
+  ordenarPor: string;
+  ascendente?: boolean;
+  // false enquanto uma pre-condicao (ex: papel do usuario) nao esta pronta.
+  habilitado?: boolean;
+  // valores de filtro externos: mudar qualquer um deles dispara novo fetch.
+  dependencias?: unknown[];
+}
+
+// Precisa rodar num componente envolvido por <Suspense>, por causa do
+// useSearchParams (mesmo padrao ja usado em /compras, /solicitacao, /cotacao).
+export function usePaginatedQuery<T>({
+  montarConsulta,
+  ordenarPor,
+  ascendente = false,
+  habilitado = true,
+  dependencias = [],
+}: UsePaginatedQueryOptions<T>) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const pagina = Math.max(1, Number(searchParams.get("page")) || 1);
+  const [itensPorPagina, setItensPorPagina] = useState(ITENS_POR_PAGINA_PADRAO);
+
+  const [dados, setDados] = useState<T[]>([]);
+  const [total, setTotal] = useState(0);
+  const [carregando, setCarregando] = useState(false);
+  const [versao, setVersao] = useState(0);
+
+  const irParaPagina = useCallback(
+    (novaPagina: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (novaPagina <= 1) params.delete("page");
+      else params.set("page", String(novaPagina));
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
+  const resetarPagina = useCallback(() => {
+    if (pagina !== 1) irParaPagina(1);
+  }, [pagina, irParaPagina]);
+
+  // JSON.stringify vira uma unica dependencia estavel em conteudo — o hook
+  // useCallback exige um array literal, entao nao da pra espalhar
+  // `dependencias` direto nele.
+  const chaveDependencias = JSON.stringify(dependencias);
+
+  const carregar = useCallback(async () => {
+    if (!habilitado) return;
+    setCarregando(true);
+    const de = (pagina - 1) * itensPorPagina;
+    const ate = de + itensPorPagina - 1;
+    const { data, count } = await montarConsulta()
+      .order(ordenarPor, { ascending: ascendente })
+      .range(de, ate);
+    setDados(data ?? []);
+    setTotal(count ?? 0);
+    setCarregando(false);
+    // montarConsulta fecha sobre os filtros atuais; chaveDependencias (vinda
+    // de `dependencias`, passada por quem usa o hook) e que decide quando
+    // refazer o fetch — por isso o eslint-disable, igual ao padrao já usado
+    // em outras telas do projeto para efeitos com deps escolhidas a mao.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habilitado, pagina, itensPorPagina, ordenarPor, ascendente, versao, chaveDependencias]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => carregar());
+  }, [carregar]);
+
+  function mudarItensPorPagina(novoValor: number) {
+    setItensPorPagina(novoValor);
+    resetarPagina();
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+
+  return {
+    dados,
+    total,
+    totalPaginas,
+    pagina,
+    itensPorPagina,
+    carregando,
+    irParaPagina,
+    resetarPagina,
+    mudarItensPorPagina,
+    recarregar: () => setVersao((v) => v + 1),
+  };
+}
