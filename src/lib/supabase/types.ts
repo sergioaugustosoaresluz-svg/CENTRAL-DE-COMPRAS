@@ -236,3 +236,17 @@ export interface PreferenciaNotificacao {
   canal_sistema: boolean;
   canal_email: boolean;
 }
+
+export type AcaoAuditoria = "INSERT" | "UPDATE" | "DELETE";
+
+export interface LogAuditoriaDetalhado {
+  id: string;
+  tabela: string;
+  registro_id: string | null;
+  acao: AcaoAuditoria;
+  usuario_id: string | null;
+  dados_antigos: Record<string, unknown> | null;
+  dados_novos: Record<string, unknown> | null;
+  created_at: string;
+  nome_usuario: string;
+}

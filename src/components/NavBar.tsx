@@ -21,7 +21,9 @@ export function NavBar() {
 
   if (pathname === "/login") return null;
 
-  const links = isAdmin ? [...LINKS, { href: "/dashboard", label: "Dashboard" }] : LINKS;
+  const links = isAdmin
+    ? [...LINKS, { href: "/auditoria", label: "Auditoria" }, { href: "/dashboard", label: "Dashboard" }]
+    : LINKS;
 
   return (
     <nav className="bg-surface-muted border-b border-hairline px-8 flex items-center justify-between">
