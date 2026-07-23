@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, Suspense, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AcaoAuditoria, LogAuditoriaDetalhado } from "@/lib/supabase/types";
@@ -124,14 +124,6 @@ function DetalheEvento({ log }: { log: LogAuditoriaDetalhado }) {
 }
 
 export default function AuditoriaPage() {
-  return (
-    <Suspense fallback={null}>
-      <AuditoriaPageConteudo />
-    </Suspense>
-  );
-}
-
-function AuditoriaPageConteudo() {
   const { loading, isAdmin } = useAuth();
 
   const [expandidoId, setExpandidoId] = useState<string | null>(null);

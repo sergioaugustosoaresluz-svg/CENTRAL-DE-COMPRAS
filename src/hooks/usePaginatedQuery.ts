@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const ITENS_POR_PAGINA_PADRAO = 20;
 export const ITENS_POR_PAGINA_OPCOES = [20, 50, 100] as const;
@@ -33,8 +32,17 @@ interface UsePaginatedQueryOptions {
   dependencias?: unknown[];
 }
 
-// Precisa rodar num componente envolvido por <Suspense>, por causa do
-// useSearchParams (mesmo padrao ja usado em /compras, /solicitacao, /cotacao).
+function lerPaginaDaUrl(): number {
+  if (typeof window === "undefined") return 1;
+  return Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1);
+}
+
+// A pagina fica na query string (?page=N) via History API nativa
+// (pushState/popstate), em vez do router do Next: em producao,
+// router.push() para remover ?page depois de um reload as vezes nao
+// atualiza a URL de verdade (bug de cache do router do App Router
+// reproduzido durante os testes) — a History API nao tem essa instabilidade
+// e nao exige <Suspense> ao redor de quem usa o hook.
 export function usePaginatedQuery<T>({
   montarConsulta,
   ordenarPor,
@@ -42,11 +50,7 @@ export function usePaginatedQuery<T>({
   habilitado = true,
   dependencias = [],
 }: UsePaginatedQueryOptions) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const pagina = Math.max(1, Number(searchParams.get("page")) || 1);
+  const [pagina, setPagina] = useState(lerPaginaDaUrl);
   const [itensPorPagina, setItensPorPagina] = useState(ITENS_POR_PAGINA_PADRAO);
 
   const [dados, setDados] = useState<T[]>([]);
@@ -54,20 +58,43 @@ export function usePaginatedQuery<T>({
   const [carregando, setCarregando] = useState(false);
   const [versao, setVersao] = useState(0);
 
-  const irParaPagina = useCallback(
-    (novaPagina: number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (novaPagina <= 1) params.delete("page");
-      else params.set("page", String(novaPagina));
-      const query = params.toString();
-      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    },
-    [router, pathname, searchParams]
-  );
+  // Trocar filtro dispara duas renderizacoes em sequencia rapida: uma ainda
+  // com a pagina antiga (antes do reset terminar) e outra ja com a pagina 1.
+  // As duas viram fetch — sem essa guarda, se a resposta da requisicao
+  // desatualizada chegar depois da correta, ela sobrescreve o resultado
+  // certo com dados da pagina/filtro errados.
+  const requisicaoAtualRef = useRef(0);
+
+  useEffect(() => {
+    function aoNavegarHistorico() {
+      setPagina(lerPaginaDaUrl());
+    }
+    window.addEventListener("popstate", aoNavegarHistorico);
+    return () => window.removeEventListener("popstate", aoNavegarHistorico);
+  }, []);
+
+  const irParaPagina = useCallback((novaPagina: number) => {
+    const paginaFinal = Math.max(1, novaPagina);
+    const params = new URLSearchParams(window.location.search);
+    if (paginaFinal <= 1) params.delete("page");
+    else params.set("page", String(paginaFinal));
+    const query = params.toString();
+    const destino = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    window.history.pushState(null, "", destino);
+    setPagina(paginaFinal);
+  }, []);
 
   const resetarPagina = useCallback(() => {
-    if (pagina !== 1) irParaPagina(1);
-  }, [pagina, irParaPagina]);
+    setPagina((atual) => {
+      if (atual === 1) return atual;
+      const params = new URLSearchParams(window.location.search);
+      params.delete("page");
+      const query = params.toString();
+      const destino = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.history.pushState(null, "", destino);
+      return 1;
+    });
+  }, []);
 
   // JSON.stringify vira uma unica dependencia estavel em conteudo — o hook
   // useCallback exige um array literal, entao nao da pra espalhar
@@ -76,12 +103,14 @@ export function usePaginatedQuery<T>({
 
   const carregar = useCallback(async () => {
     if (!habilitado) return;
+    const idRequisicao = ++requisicaoAtualRef.current;
     setCarregando(true);
     const de = (pagina - 1) * itensPorPagina;
     const ate = de + itensPorPagina - 1;
     const { data, count } = await montarConsulta()
       .order(ordenarPor, { ascending: ascendente })
       .range(de, ate);
+    if (idRequisicao !== requisicaoAtualRef.current) return; // resposta desatualizada, ignora
     setDados((Array.isArray(data) ? data : []) as unknown as T[]);
     setTotal(count ?? 0);
     setCarregando(false);

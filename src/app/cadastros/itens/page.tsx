@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item } from "@/lib/supabase/types";
@@ -31,14 +31,6 @@ function ItemStatusBadge({ status }: { status: Item["status"] }) {
 }
 
 export default function ItensPage() {
-  return (
-    <Suspense fallback={null}>
-      <ItensPageConteudo />
-    </Suspense>
-  );
-}
-
-function ItensPageConteudo() {
   const { isAdmin } = useAuth();
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);

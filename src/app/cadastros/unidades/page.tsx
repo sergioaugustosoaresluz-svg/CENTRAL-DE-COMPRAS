@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Unidade } from "@/lib/supabase/types";
@@ -26,14 +26,6 @@ function UnidadeStatusBadge({ ativo }: { ativo: boolean }) {
 }
 
 export default function UnidadesPage() {
-  return (
-    <Suspense fallback={null}>
-      <UnidadesPageConteudo />
-    </Suspense>
-  );
-}
-
-function UnidadesPageConteudo() {
   const { isAdmin } = useAuth();
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);

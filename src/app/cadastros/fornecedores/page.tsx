@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Fornecedor } from "@/lib/supabase/types";
@@ -25,14 +25,6 @@ const FORM_VAZIO = {
 };
 
 export default function FornecedoresPage() {
-  return (
-    <Suspense fallback={null}>
-      <FornecedoresPageConteudo />
-    </Suspense>
-  );
-}
-
-function FornecedoresPageConteudo() {
   const { isAdmin } = useAuth();
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);

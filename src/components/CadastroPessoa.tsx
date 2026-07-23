@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Pessoa } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
@@ -30,15 +30,7 @@ const FORM_VAZIO = {
   funcao: "",
 };
 
-export function CadastroPessoa(props: Props) {
-  return (
-    <Suspense fallback={null}>
-      <CadastroPessoaConteudo {...props} />
-    </Suspense>
-  );
-}
-
-function CadastroPessoaConteudo({ tabela, titulo }: Props) {
+export function CadastroPessoa({ tabela, titulo }: Props) {
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
