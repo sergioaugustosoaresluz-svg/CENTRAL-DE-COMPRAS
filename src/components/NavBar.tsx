@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificacoesSino } from "@/components/NotificacoesSino";
 
+const ROTAS_SEM_NAVBAR = ["/login", "/esqueci-senha", "/redefinir-senha"];
+
 const LINKS = [
   { href: "/", label: "Início" },
   { href: "/solicitacao", label: "Solicitação" },
@@ -19,7 +21,7 @@ export function NavBar() {
   const pathname = usePathname();
   const { user, isAdmin, signOut } = useAuth();
 
-  if (pathname === "/login") return null;
+  if (ROTAS_SEM_NAVBAR.includes(pathname)) return null;
 
   const links = isAdmin
     ? [...LINKS, { href: "/auditoria", label: "Auditoria" }, { href: "/dashboard", label: "Dashboard" }]
