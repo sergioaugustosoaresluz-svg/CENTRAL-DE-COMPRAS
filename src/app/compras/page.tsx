@@ -50,12 +50,27 @@ const NOTA_LABEL: Record<AvaliacaoNota, string> = {
   ruim: "Ruim",
 };
 
+// Mesma paleta semantica de sucesso/aviso/perigo ja usada pelo Badge
+// (src/components/Badge.tsx), pra nao inventar cor nova pro botao selecionado.
+const NOTA_BOTAO_SELECIONADO: Record<AvaliacaoNota, string> = {
+  bom: "border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/40 dark:text-green-300",
+  regular:
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  ruim: "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300",
+};
+
+const NOTA_TOM: Record<AvaliacaoNota, BadgeTone> = {
+  bom: "green",
+  regular: "amber",
+  ruim: "red",
+};
+
 const ASPECTOS_AVALIACAO: { campo: keyof FormAvaliacao; label: string }[] = [
-  { campo: "prazo_entrega", label: "Prazo de entrega" },
-  { campo: "prazo_pagamento", label: "Prazo de pagamento" },
+  { campo: "portfolio", label: "Portfólio" },
   { campo: "preco", label: "Preço" },
   { campo: "qualidade_produto", label: "Qualidade do produto" },
-  { campo: "portfolio", label: "Portfólio" },
+  { campo: "prazo_pagamento", label: "Prazo de pagamento" },
+  { campo: "prazo_entrega", label: "Prazo de entrega" },
 ];
 
 interface FormAvaliacao {
@@ -64,7 +79,6 @@ interface FormAvaliacao {
   preco: AvaliacaoNota | null;
   qualidade_produto: AvaliacaoNota | null;
   portfolio: AvaliacaoNota | null;
-  comentario: string;
 }
 
 const FORM_AVALIACAO_VAZIO: FormAvaliacao = {
@@ -73,29 +87,35 @@ const FORM_AVALIACAO_VAZIO: FormAvaliacao = {
   preco: null,
   qualidade_produto: null,
   portfolio: null,
-  comentario: "",
 };
 
-function SeletorNota({
+function ColunaAvaliacao({
+  label,
   valor,
   onChange,
 }: {
+  label: string;
   valor: AvaliacaoNota | null;
   onChange: (v: AvaliacaoNota) => void;
 }) {
   const opcoes: AvaliacaoNota[] = ["bom", "regular", "ruim"];
   return (
-    <div className="flex gap-2">
-      {opcoes.map((o) => (
-        <button
-          key={o}
-          type="button"
-          onClick={() => onChange(o)}
-          className={valor === o ? buttonClass : secondaryButtonClass}
-        >
-          {NOTA_LABEL[o]}
-        </button>
-      ))}
+    <div className="space-y-2 rounded-md border border-hairline bg-surface-muted p-3">
+      <span className="block text-xs text-muted">{label}</span>
+      <div className="space-y-1.5">
+        {opcoes.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onChange(o)}
+            className={`w-full rounded-md border px-2 py-1.5 text-sm font-medium transition-colors ${
+              valor === o ? NOTA_BOTAO_SELECIONADO[o] : "border-hairline text-muted hover:text-primary"
+            }`}
+          >
+            {NOTA_LABEL[o]}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -202,7 +222,7 @@ function ComprasPageConteudo() {
 
   async function enviarAvaliacao() {
     if (!selecionada || !compradorId || !selecionada.cotacoes) return;
-    const { prazo_entrega, prazo_pagamento, preco, qualidade_produto, portfolio, comentario } = formAvaliacao;
+    const { prazo_entrega, prazo_pagamento, preco, qualidade_produto, portfolio } = formAvaliacao;
     if (!prazo_entrega || !prazo_pagamento || !preco || !qualidade_produto || !portfolio) {
       setMensagemAvaliacao({ tipo: "erro", texto: "Avalie todos os aspectos antes de enviar." });
       return;
@@ -222,7 +242,7 @@ function ComprasPageConteudo() {
           preco,
           qualidade_produto,
           portfolio,
-          comentario: comentario.trim() || null,
+          comentario: null,
         })
         .select()
         .single();
@@ -449,43 +469,36 @@ function ComprasPageConteudo() {
                   {avaliacao ? (
                     <>
                       <h3 className="text-sm font-medium">Avaliação do fornecedor</h3>
-                      {ASPECTOS_AVALIACAO.map(({ campo, label }) => (
-                        <p key={campo} className="text-sm">
-                          <span className="text-muted">{label}:</span> {NOTA_LABEL[avaliacao[campo] as AvaliacaoNota]}
-                        </p>
-                      ))}
-                      {avaliacao.comentario && (
-                        <p className="text-sm">
-                          <span className="text-muted">Comentário:</span> {avaliacao.comentario}
-                        </p>
-                      )}
+                      <div className="grid grid-cols-5 gap-2">
+                        {ASPECTOS_AVALIACAO.map(({ campo, label }) => {
+                          const nota = avaliacao[campo] as AvaliacaoNota;
+                          return (
+                            <div
+                              key={campo}
+                              className="space-y-2 rounded-md border border-hairline bg-surface-muted p-3 text-center"
+                            >
+                              <span className="block text-xs text-muted">{label}</span>
+                              <Badge tone={NOTA_TOM[nota]}>{NOTA_LABEL[nota]}</Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </>
                   ) : (
                     compradorId != null &&
                     compradorId === selecionada.comprador_id && (
                       <>
                         <h3 className="text-sm font-medium">Avaliar fornecedor</h3>
-                        {ASPECTOS_AVALIACAO.map(({ campo, label }) => (
-                          // Nao e' <label>: envolveria 3 botoes ao mesmo tempo, o que
-                          // e' semanticamente invalido (label so' associa 1 controle) e
-                          // atrapalha o calculo de nome acessivel de cada botao.
-                          <div key={campo} className="block text-sm space-y-1">
-                            <span>{label}</span>
-                            <SeletorNota
+                        <div className="grid grid-cols-5 gap-2">
+                          {ASPECTOS_AVALIACAO.map(({ campo, label }) => (
+                            <ColunaAvaliacao
+                              key={campo}
+                              label={label}
                               valor={formAvaliacao[campo] as AvaliacaoNota | null}
                               onChange={(v) => setFormAvaliacao({ ...formAvaliacao, [campo]: v })}
                             />
-                          </div>
-                        ))}
-                        <label className="block text-sm space-y-1">
-                          <span>Comentário (opcional)</span>
-                          <textarea
-                            value={formAvaliacao.comentario}
-                            onChange={(e) => setFormAvaliacao({ ...formAvaliacao, comentario: e.target.value })}
-                            className={inputClass}
-                            rows={3}
-                          />
-                        </label>
+                          ))}
+                        </div>
                         <button onClick={enviarAvaliacao} disabled={enviandoAvaliacao} className={buttonClass}>
                           {enviandoAvaliacao ? "Enviando..." : "Enviar avaliação"}
                         </button>
