@@ -83,7 +83,18 @@ export function NotificacoesSino() {
     await supabase.from("notificacoes").update({ lida: true }).eq("user_id", user.id).eq("lida", false);
   }
 
+  async function limparLidas() {
+    if (!user) return;
+    if (!window.confirm("Excluir permanentemente todas as notificações lidas? Essa ação não pode ser desfeita.")) {
+      return;
+    }
+    setNotificacoes((prev) => prev.filter((n) => !n.lida));
+    await supabase.from("notificacoes").delete().eq("user_id", user.id).eq("lida", true);
+  }
+
   if (!user) return null;
+
+  const temLidas = notificacoes.some((n) => n.lida);
 
   return (
     <div className="relative">
@@ -126,6 +137,16 @@ export function NotificacoesSino() {
                   className="text-xs text-primary hover:underline"
                 >
                   Marcar todas como lidas
+                </button>
+              )}
+              {temLidas && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={limparLidas}
+                  className="text-xs text-muted hover:text-red-600 hover:underline dark:hover:text-red-400"
+                >
+                  Limpar notificações lidas
                 </button>
               )}
               <Link
