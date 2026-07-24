@@ -24,6 +24,7 @@ export interface Pessoa {
   telefone: string | null;
   email: string | null;
   funcao: string | null;
+  user_id: string | null;
   created_at: string;
 }
 

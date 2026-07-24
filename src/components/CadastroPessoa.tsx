@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Pessoa } from "@/lib/supabase/types";
-import { inputClass, buttonClass, secondaryButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
+import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
 import { Pagination } from "@/components/Pagination";
@@ -31,6 +32,7 @@ const FORM_VAZIO = {
 };
 
 export function CadastroPessoa({ tabela, titulo }: Props) {
+  const { user, isAdmin } = useAuth();
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -92,7 +94,41 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
       if (e.message?.includes("email")) return "Já existe um cadastro com este e-mail.";
       return "Já existe um cadastro com esses dados (código ou e-mail duplicado).";
     }
+    if (e.code === "23503") {
+      return "Esta pessoa já foi usada no sistema e não pode ser excluída.";
+    }
     return e.message ?? "Erro desconhecido.";
+  }
+
+  async function excluir() {
+    if (!editandoId) return;
+    const nome = form.nome_completo || "este cadastro";
+
+    // busca o user_id atualizado (nao confia no `lista`/`form` locais, que
+    // podem estar desatualizados) so pra bloquear auto-exclusao com seguranca.
+    const { data: pessoaAtual } = await supabase
+      .from(tabela)
+      .select("user_id")
+      .eq("id", editandoId)
+      .maybeSingle();
+    if (pessoaAtual?.user_id && user && pessoaAtual.user_id === user.id) {
+      setMensagem({ tipo: "erro", texto: "Você não pode excluir o seu próprio cadastro." });
+      return;
+    }
+
+    if (!window.confirm(`Tem certeza que deseja excluir "${nome}"?`)) return;
+    setMensagem(null);
+    // apaga so da tabela especifica (compradores/solicitantes/aprovadores) —
+    // uma mesma pessoa pode ter papeis em mais de uma tabela, e os outros
+    // papeis nao devem ser afetados.
+    const { error } = await supabase.from(tabela).delete().eq("id", editandoId);
+    if (error) {
+      setMensagem({ tipo: "erro", texto: mensagemDeErro(error) });
+      return;
+    }
+    setAberto(false);
+    setMensagem({ tipo: "sucesso", texto: `"${nome}" excluído com sucesso.` });
+    recarregar();
   }
 
   async function salvar() {
@@ -134,6 +170,8 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
           Novo cadastro
         </button>
       </div>
+
+      <MensagemInline mensagem={mensagem} />
 
       <input
         value={busca}
@@ -251,9 +289,12 @@ export function CadastroPessoa({ tabela, titulo }: Props) {
             <button onClick={() => setAberto(false)} className={secondaryButtonClass}>
               Cancelar
             </button>
+            {isAdmin && editandoId && (
+              <button onClick={excluir} className={dangerButtonClass}>
+                Excluir
+              </button>
+            )}
           </div>
-
-          <MensagemInline mensagem={mensagem} />
         </section>
       )}
     </PageContainer>
