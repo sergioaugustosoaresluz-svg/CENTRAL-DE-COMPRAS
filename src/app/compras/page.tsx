@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { SituacaoCompra } from "@/lib/supabase/types";
+import type { AvaliacaoFornecedor, AvaliacaoNota, SituacaoCompra } from "@/lib/supabase/types";
 import {
   inputClass,
   buttonClass,
@@ -44,9 +44,66 @@ function SituacaoBadge({ situacao }: { situacao: SituacaoCompra }) {
   return <Badge tone={SITUACAO_TONS[situacao]}>{SITUACAO_LABEL[situacao]}</Badge>;
 }
 
+const NOTA_LABEL: Record<AvaliacaoNota, string> = {
+  bom: "Bom",
+  regular: "Regular",
+  ruim: "Ruim",
+};
+
+const ASPECTOS_AVALIACAO: { campo: keyof FormAvaliacao; label: string }[] = [
+  { campo: "prazo_entrega", label: "Prazo de entrega" },
+  { campo: "prazo_pagamento", label: "Prazo de pagamento" },
+  { campo: "preco", label: "Preço" },
+  { campo: "qualidade_produto", label: "Qualidade do produto" },
+  { campo: "portfolio", label: "Portfólio" },
+];
+
+interface FormAvaliacao {
+  prazo_entrega: AvaliacaoNota | null;
+  prazo_pagamento: AvaliacaoNota | null;
+  preco: AvaliacaoNota | null;
+  qualidade_produto: AvaliacaoNota | null;
+  portfolio: AvaliacaoNota | null;
+  comentario: string;
+}
+
+const FORM_AVALIACAO_VAZIO: FormAvaliacao = {
+  prazo_entrega: null,
+  prazo_pagamento: null,
+  preco: null,
+  qualidade_produto: null,
+  portfolio: null,
+  comentario: "",
+};
+
+function SeletorNota({
+  valor,
+  onChange,
+}: {
+  valor: AvaliacaoNota | null;
+  onChange: (v: AvaliacaoNota) => void;
+}) {
+  const opcoes: AvaliacaoNota[] = ["bom", "regular", "ruim"];
+  return (
+    <div className="flex gap-2">
+      {opcoes.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(o)}
+          className={valor === o ? buttonClass : secondaryButtonClass}
+        >
+          {NOTA_LABEL[o]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface CompraLista {
   id: string;
   numero_pedido: number;
+  comprador_id: string | null;
   valor_orcado: number | null;
   valor_pago: number | null;
   valor_contraproposta: number | null;
@@ -60,7 +117,7 @@ interface CompraLista {
     itens: { item: string } | null;
     unidades: { nome: string } | null;
   } | null;
-  cotacoes: { fornecedores: { fornecedor: string } | null } | null;
+  cotacoes: { fornecedor_id: string; fornecedores: { fornecedor: string } | null } | null;
 }
 
 function mensagemDeErro(e: ErroSupabase): string {
@@ -81,13 +138,19 @@ export default function ComprasPage() {
 function ComprasPageConteudo() {
   const searchParams = useSearchParams();
   const codigoFoco = searchParams.get("codigo");
-  const { loading, isComprador, isAprovador, isAdmin } = useAuth();
+  const { loading, isComprador, isAprovador, isAdmin, compradorId } = useAuth();
   const [selecionada, setSelecionada] = useState<CompraLista | null>(null);
   const [notaFiscal, setNotaFiscal] = useState("");
   const [dataRecebimento, setDataRecebimento] = useState(() => new Date().toISOString().slice(0, 10));
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemState | null>(null);
   const [codigoJaAberto, setCodigoJaAberto] = useState(false);
+
+  const [avaliacao, setAvaliacao] = useState<AvaliacaoFornecedor | null>(null);
+  const [carregandoAvaliacao, setCarregandoAvaliacao] = useState(false);
+  const [formAvaliacao, setFormAvaliacao] = useState<FormAvaliacao>(FORM_AVALIACAO_VAZIO);
+  const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
+  const [mensagemAvaliacao, setMensagemAvaliacao] = useState<MensagemState | null>(null);
 
   const temAcesso = isComprador || isAprovador || isAdmin;
 
@@ -109,7 +172,7 @@ function ComprasPageConteudo() {
       supabase
         .from("compras")
         .select(
-          "id, numero_pedido, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedores(fornecedor))",
+          "id, numero_pedido, comprador_id, valor_orcado, valor_pago, valor_contraproposta, data_compra, data_recebimento, nota_fiscal, situacao, solicitacoes(codigo, data_aprovacao, itens(item), unidades(nome)), cotacoes(fornecedor_id, fornecedores(fornecedor))",
           { count: "exact" }
         ),
   });
@@ -119,6 +182,57 @@ function ComprasPageConteudo() {
     setMensagem(null);
     setNotaFiscal(c.nota_fiscal ?? "");
     setDataRecebimento(new Date().toISOString().slice(0, 10));
+
+    setAvaliacao(null);
+    setFormAvaliacao(FORM_AVALIACAO_VAZIO);
+    setMensagemAvaliacao(null);
+    if (c.situacao === "recebido") {
+      setCarregandoAvaliacao(true);
+      supabase
+        .from("avaliacoes_fornecedor")
+        .select("*")
+        .eq("compra_id", c.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setAvaliacao((data as AvaliacaoFornecedor | null) ?? null);
+          setCarregandoAvaliacao(false);
+        });
+    }
+  }
+
+  async function enviarAvaliacao() {
+    if (!selecionada || !compradorId || !selecionada.cotacoes) return;
+    const { prazo_entrega, prazo_pagamento, preco, qualidade_produto, portfolio, comentario } = formAvaliacao;
+    if (!prazo_entrega || !prazo_pagamento || !preco || !qualidade_produto || !portfolio) {
+      setMensagemAvaliacao({ tipo: "erro", texto: "Avalie todos os aspectos antes de enviar." });
+      return;
+    }
+
+    setEnviandoAvaliacao(true);
+    setMensagemAvaliacao(null);
+    try {
+      const { data, error } = await supabase
+        .from("avaliacoes_fornecedor")
+        .insert({
+          compra_id: selecionada.id,
+          fornecedor_id: selecionada.cotacoes.fornecedor_id,
+          comprador_id: compradorId,
+          prazo_entrega,
+          prazo_pagamento,
+          preco,
+          qualidade_produto,
+          portfolio,
+          comentario: comentario.trim() || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setAvaliacao(data as AvaliacaoFornecedor);
+    } catch (e) {
+      setMensagemAvaliacao({ tipo: "erro", texto: "Erro ao enviar avaliação: " + (e as Error).message });
+    } finally {
+      setEnviandoAvaliacao(false);
+    }
   }
 
   useEffect(() => {
@@ -327,6 +441,58 @@ function ComprasPageConteudo() {
                   <button onClick={() => setSelecionada(null)} className={secondaryButtonClass}>
                     Fechar
                   </button>
+                </div>
+              )}
+
+              {selecionada.situacao === "recebido" && !carregandoAvaliacao && (
+                <div className="space-y-3 border-t border-hairline pt-4">
+                  {avaliacao ? (
+                    <>
+                      <h3 className="text-sm font-medium">Avaliação do fornecedor</h3>
+                      {ASPECTOS_AVALIACAO.map(({ campo, label }) => (
+                        <p key={campo} className="text-sm">
+                          <span className="text-muted">{label}:</span> {NOTA_LABEL[avaliacao[campo] as AvaliacaoNota]}
+                        </p>
+                      ))}
+                      {avaliacao.comentario && (
+                        <p className="text-sm">
+                          <span className="text-muted">Comentário:</span> {avaliacao.comentario}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    compradorId != null &&
+                    compradorId === selecionada.comprador_id && (
+                      <>
+                        <h3 className="text-sm font-medium">Avaliar fornecedor</h3>
+                        {ASPECTOS_AVALIACAO.map(({ campo, label }) => (
+                          // Nao e' <label>: envolveria 3 botoes ao mesmo tempo, o que
+                          // e' semanticamente invalido (label so' associa 1 controle) e
+                          // atrapalha o calculo de nome acessivel de cada botao.
+                          <div key={campo} className="block text-sm space-y-1">
+                            <span>{label}</span>
+                            <SeletorNota
+                              valor={formAvaliacao[campo] as AvaliacaoNota | null}
+                              onChange={(v) => setFormAvaliacao({ ...formAvaliacao, [campo]: v })}
+                            />
+                          </div>
+                        ))}
+                        <label className="block text-sm space-y-1">
+                          <span>Comentário (opcional)</span>
+                          <textarea
+                            value={formAvaliacao.comentario}
+                            onChange={(e) => setFormAvaliacao({ ...formAvaliacao, comentario: e.target.value })}
+                            className={inputClass}
+                            rows={3}
+                          />
+                        </label>
+                        <button onClick={enviarAvaliacao} disabled={enviandoAvaliacao} className={buttonClass}>
+                          {enviandoAvaliacao ? "Enviando..." : "Enviar avaliação"}
+                        </button>
+                        <MensagemInline mensagem={mensagemAvaliacao} />
+                      </>
+                    )
+                  )}
                 </div>
               )}
             </section>

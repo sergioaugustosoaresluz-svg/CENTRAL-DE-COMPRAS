@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Fornecedor } from "@/lib/supabase/types";
+import type { Fornecedor, FornecedorAvaliacaoResumo } from "@/lib/supabase/types";
 import { inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, cardClass, tableClass, theadRowClass, tbodyRowClass } from "@/components/ui";
 import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
 import { Pagination } from "@/components/Pagination";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
+import { SeloAvaliacao, notaPorScore, NOTA_LABEL, NOTA_COR_BARRA } from "@/components/SeloAvaliacao";
 
 interface ErroSupabase {
   code?: string;
@@ -23,6 +24,28 @@ const FORM_VAZIO = {
   email: "",
   uf: "",
 };
+
+const ASPECTOS_RESUMO: { campo: keyof FornecedorAvaliacaoResumo; label: string }[] = [
+  { campo: "score_prazo_entrega", label: "Prazo de entrega" },
+  { campo: "score_prazo_pagamento", label: "Prazo de pagamento" },
+  { campo: "score_preco", label: "Preço" },
+  { campo: "score_qualidade", label: "Qualidade do produto" },
+  { campo: "score_portfolio", label: "Portfólio" },
+];
+
+function BarraAvaliacaoAspecto({ label, score }: { label: string; score: number }) {
+  const nota = notaPorScore(score);
+  const pct = Math.round(((score + 1) / 2) * 100);
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className="w-44 shrink-0 text-muted">{label}</span>
+      <div className="h-2.5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+        <div className={`h-2.5 rounded-full ${NOTA_COR_BARRA[nota]}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-16 shrink-0">{NOTA_LABEL[nota]}</span>
+    </div>
+  );
+}
 
 export default function FornecedoresPage() {
   const { isAdmin } = useAuth();
@@ -56,6 +79,26 @@ export default function FornecedoresPage() {
       return query;
     },
   });
+
+  const [resumos, setResumos] = useState<Record<string, FornecedorAvaliacaoResumo>>({});
+
+  useEffect(() => {
+    if (lista.length === 0) return;
+    Promise.resolve().then(async () => {
+      const { data } = await supabase
+        .from("fornecedores_avaliacao_resumo")
+        .select("*")
+        .in(
+          "fornecedor_id",
+          lista.map((f) => f.id)
+        );
+      const map: Record<string, FornecedorAvaliacaoResumo> = {};
+      ((data as FornecedorAvaliacaoResumo[] | null) ?? []).forEach((r) => {
+        map[r.fornecedor_id] = r;
+      });
+      setResumos((prev) => ({ ...prev, ...map }));
+    });
+  }, [lista]);
 
   function abrirNovo() {
     setEditandoId(null);
@@ -179,7 +222,12 @@ export default function FornecedoresPage() {
                 className={`${tbodyRowClass} cursor-pointer`}
               >
                 <td>{f.codigo}</td>
-                <td>{f.fornecedor}</td>
+                <td>
+                  <span className="inline-flex items-center gap-2">
+                    {f.fornecedor}
+                    {resumos[f.id] && <SeloAvaliacao classificacao={resumos[f.id].classificacao} />}
+                  </span>
+                </td>
                 <td>{f.contato ?? f.email ?? f.telefone ?? "-"}</td>
                 <td>{f.uf ?? "-"}</td>
                 {isAdmin && (
@@ -207,6 +255,27 @@ export default function FornecedoresPage() {
       {aberto && (
         <section className={cardClass}>
           <h2 className="font-medium">{editandoId ? "Editar fornecedor" : "Novo fornecedor"}</h2>
+
+          {editandoId && resumos[editandoId] && (
+            <div className="space-y-3 rounded-md border border-hairline bg-surface-muted p-3">
+              <div className="flex items-center gap-2">
+                <SeloAvaliacao classificacao={resumos[editandoId].classificacao} />
+                <span className="text-xs text-muted">
+                  Baseado em {resumos[editandoId].total_avaliacoes} avaliaç
+                  {resumos[editandoId].total_avaliacoes === 1 ? "ão" : "ões"}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {ASPECTOS_RESUMO.map(({ campo, label }) => (
+                  <BarraAvaliacaoAspecto
+                    key={campo}
+                    label={label}
+                    score={resumos[editandoId][campo] as number}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <label className="block text-sm space-y-1">
             <span>Código</span>

@@ -10,6 +10,7 @@ import type {
   CotacaoMelhorOpcao,
   CotacaoClassificacao,
   CategoriaCampoEspecificacao,
+  FornecedorAvaliacaoResumo,
 } from "@/lib/supabase/types";
 import {
   inputClass,
@@ -28,6 +29,7 @@ import { MensagemInline, type MensagemState } from "@/components/Mensagem";
 import { PageContainer } from "@/components/PageContainer";
 import { Pagination } from "@/components/Pagination";
 import { usePaginatedQuery } from "@/hooks/usePaginatedQuery";
+import { SeloAvaliacao } from "@/components/SeloAvaliacao";
 
 function ClassificacaoBadge({ classificacao }: { classificacao: CotacaoClassificacao["classificacao"] }) {
   if (!classificacao) {
@@ -137,6 +139,7 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
   const [cotacoesDaSolicitacao, setCotacoesDaSolicitacao] = useState<
     (Cotacao & { fornecedores: { fornecedor: string } | null })[]
   >([]);
+  const [resumosFornecedores, setResumosFornecedores] = useState<Record<string, FornecedorAvaliacaoResumo>>({});
   const [vencedoraId, setVencedoraId] = useState<string | null>(null);
   const [classificacao, setClassificacao] = useState<CotacaoClassificacao | null>(null);
   const [camposCategoria, setCamposCategoria] = useState<CategoriaCampoEspecificacao[]>([]);
@@ -263,6 +266,19 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
       setClassificacao(null);
     }
   }
+
+  useEffect(() => {
+    if (cotacoesDaSolicitacao.length === 0) return;
+    Promise.resolve().then(async () => {
+      const ids = Array.from(new Set(cotacoesDaSolicitacao.map((c) => c.fornecedor_id)));
+      const { data } = await supabase.from("fornecedores_avaliacao_resumo").select("*").in("fornecedor_id", ids);
+      const map: Record<string, FornecedorAvaliacaoResumo> = {};
+      ((data as FornecedorAvaliacaoResumo[] | null) ?? []).forEach((r) => {
+        map[r.fornecedor_id] = r;
+      });
+      setResumosFornecedores(map);
+    });
+  }, [cotacoesDaSolicitacao]);
 
   async function adicionarCotacao() {
     if (!selecionada) return;
@@ -438,8 +454,13 @@ function VisaoComprador({ codigoFoco }: { codigoFoco: string | null }) {
                     }`}
                   >
                     <td className="py-2">
-                      {c.fornecedores?.fornecedor}
-                      {c.id === vencedoraId ? " ★ vencedora" : ""}
+                      <span className="inline-flex items-center gap-2">
+                        {c.fornecedores?.fornecedor}
+                        {c.id === vencedoraId ? " ★ vencedora" : ""}
+                        {resumosFornecedores[c.fornecedor_id] && (
+                          <SeloAvaliacao classificacao={resumosFornecedores[c.fornecedor_id].classificacao} />
+                        )}
+                      </span>
                     </td>
                     <td>{formatarMoeda(c.preco)}</td>
                     <td>{formatarMoeda(c.valor_presente)}</td>

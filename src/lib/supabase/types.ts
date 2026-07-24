@@ -249,3 +249,33 @@ export interface LogAuditoriaDetalhado {
   created_at: string;
   nome_usuario: string;
 }
+
+export type AvaliacaoNota = "bom" | "regular" | "ruim";
+
+export interface AvaliacaoFornecedor {
+  id: string;
+  compra_id: string;
+  fornecedor_id: string;
+  comprador_id: string;
+  prazo_entrega: AvaliacaoNota;
+  prazo_pagamento: AvaliacaoNota;
+  preco: AvaliacaoNota;
+  qualidade_produto: AvaliacaoNota;
+  portfolio: AvaliacaoNota;
+  comentario: string | null;
+  created_at: string;
+}
+
+export type ClassificacaoFornecedor = "bem_avaliado" | "regular" | "com_ressalvas";
+
+export interface FornecedorAvaliacaoResumo {
+  fornecedor_id: string;
+  total_avaliacoes: number;
+  score_geral: number;
+  classificacao: ClassificacaoFornecedor;
+  score_prazo_entrega: number;
+  score_prazo_pagamento: number;
+  score_preco: number;
+  score_qualidade: number;
+  score_portfolio: number;
+}
